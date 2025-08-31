@@ -1,0 +1,15 @@
+[project]
+name = "aiml425-assignment-3"
+version = "0.1.0"
+description = "Training a VAE to generate shapes and look at information rates"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flax>=0.10.7",
+    "ipywidgets>=8.1.7",
+    "jax[cuda12]>=0.7.0",
+    "matplotlib>=3.10.3",
+    "notebook>=7.4.4",
+    "pandas>=2.3.1",
+    "rich>=14.1.0",
+]

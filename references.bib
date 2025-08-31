@@ -1,0 +1,237 @@
+@inproceedings{37362,
+  title = {L1 and {{L2}} Regularization for Multiclass Hinge Loss Models},
+  booktitle = {Symposium on Machine Learning in Speech and Natural Language Processing},
+  author = {Moore, Robert C. and DeNero, John},
+  year = {2011}
+}
+
+@article{amariBackpropagationStochasticGradient1993,
+  title = {Backpropagation and Stochastic Gradient Descent Method},
+  author = {Amari, Shun-ichi},
+  year = {1993},
+  month = jun,
+  journal = {Neurocomputing},
+  volume = {5},
+  number = {4},
+  pages = {185--196},
+  issn = {0925-2312},
+  doi = {10.1016/0925-2312(93)90006-O},
+  urldate = {2025-08-09},
+  abstract = {The backpropagation learning method has opened a way to wide applications of neural network research. It is a type of the stochastic descent method known in the sixties. The present paper reviews the wide applicability of the stochastic gradient descent method to various types of models and loss functions. In particular, we apply it to the pattern recognition problem, obtaining a new learning algorithm based on the information criterion. Dynamical properties of learning curves are then studied based on an old paper by the author where the stochastic descent method was proposed for general multilayer networks. The paper is concluded with a short section offering some historical remarks.},
+  keywords = {dynamics of learning,generalized delta rule,multilayer perceptron,pattern classification,Stochastic descent},
+  file = {/home/james/snap/zotero-snap/common/Zotero/storage/TYGKUN5W/092523129390006O.html}
+}
+
+@inproceedings{anselPyTorch2Faster2024,
+  title = {{{PyTorch}} 2: {{Faster}} Machine Learning through Dynamic Python Bytecode Transformation and Graph Compilation},
+  booktitle = {29th {{ACM}} International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2 ({{ASPLOS}} '24)},
+  author = {Ansel, Jason and Yang, Edward and He, Horace and Gimelshein, Natalia and Jain, Animesh and Voznesensky, Michael and Bao, Bin and Bell, Peter and Berard, David and Burovski, Evgeni and Chauhan, Geeta and Chourdia, Anjali and Constable, Will and Desmaison, Alban and DeVito, Zachary and Ellison, Elias and Feng, Will and Gong, Jiong and Gschwind, Michael and Hirsh, Brian and Huang, Sherlock and Kalambarkar, Kshiteej and Kirsch, Laurent and Lazos, Michael and Lezcano, Mario and Liang, Yanbo and Liang, Jason and Lu, Yinghai and Luk, {\relax CK} and Maher, Bert and Pan, Yunjie and Puhrsch, Christian and Reso, Matthias and Saroufim, Mark and Siraichi, Marcos Yukio and Suk, Helen and Suo, Michael and Tillet, Phil and Wang, Eikan and Wang, Xiaodong and Wen, William and Zhang, Shunting and Zhao, Xu and Zhou, Keren and Zou, Richard and Mathews, Ajit and Chanan, Gregory and Wu, Peng and Chintala, Soumith},
+  year = {2024},
+  month = apr,
+  publisher = {ACM},
+  doi = {10.1145/3620665.3640366}
+}
+
+@misc{baLayerNormalization2016a,
+  title = {Layer {{Normalization}}},
+  author = {Ba, Jimmy Lei and Kiros, Jamie Ryan and Hinton, Geoffrey E.},
+  year = {2016},
+  month = jul,
+  number = {arXiv:1607.06450},
+  eprint = {1607.06450},
+  primaryclass = {stat},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.1607.06450},
+  urldate = {2025-08-13},
+  abstract = {Training state-of-the-art, deep neural networks is computationally expensive. One way to reduce the training time is to normalize the activities of the neurons. A recently introduced technique called batch normalization uses the distribution of the summed input to a neuron over a mini-batch of training cases to compute a mean and variance which are then used to normalize the summed input to that neuron on each training case. This significantly reduces the training time in feed-forward neural networks. However, the effect of batch normalization is dependent on the mini-batch size and it is not obvious how to apply it to recurrent neural networks. In this paper, we transpose batch normalization into layer normalization by computing the mean and variance used for normalization from all of the summed inputs to the neurons in a layer on a single training case. Like batch normalization, we also give each neuron its own adaptive bias and gain which are applied after the normalization but before the non-linearity. Unlike batch normalization, layer normalization performs exactly the same computation at training and test times. It is also straightforward to apply to recurrent neural networks by computing the normalization statistics separately at each time step. Layer normalization is very effective at stabilizing the hidden state dynamics in recurrent networks. Empirically, we show that layer normalization can substantially reduce the training time compared with previously published techniques.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Machine Learning,Statistics - Machine Learning},
+  file = {/home/james/snap/zotero-snap/common/Zotero/storage/I37FY9JY/Ba et al. - 2016 - Layer Normalization.pdf;/home/james/snap/zotero-snap/common/Zotero/storage/C37L7C82/1607.html}
+}
+
+@misc{flax2020github,
+  title = {Flax: {{A}} Neural Network Library and Ecosystem for {{JAX}}},
+  author = {Heek, Jonathan and Levskaya, Anselm and Oliver, Avital and Ritter, Marvin and Rondepierre, Bertrand and Steiner, Andreas and {van Zee}, Marc},
+  year = {2024}
+}
+
+@misc{grettonKernelMethodTwoSample2008,
+  title = {A {{Kernel Method}} for the {{Two-Sample Problem}}},
+  author = {Gretton, Arthur and Borgwardt, Karsten and Rasch, Malte J. and Scholkopf, Bernhard and Smola, Alexander J.},
+  year = {2008},
+  month = may,
+  number = {arXiv:0805.2368},
+  eprint = {0805.2368},
+  primaryclass = {cs},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.0805.2368},
+  urldate = {2025-08-13},
+  abstract = {We propose a framework for analyzing and comparing distributions, allowing us to design statistical tests to determine if two samples are drawn from different distributions. Our test statistic is the largest difference in expectations over functions in the unit ball of a reproducing kernel Hilbert space (RKHS). We present two tests based on large deviation bounds for the test statistic, while a third is based on the asymptotic distribution of this statistic. The test statistic can be computed in quadratic time, although efficient linear time approximations are available. Several classical metrics on distributions are recovered when the function space used to compute the difference in expectations is allowed to be more general (eg. a Banach space). We apply our two-sample tests to a variety of problems, including attribute matching for databases using the Hungarian marriage method, where they perform strongly. Excellent performance is also obtained when comparing distributions over graphs, for which these are the first such tests.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Artificial Intelligence,Computer Science - Machine Learning},
+  file = {/home/james/snap/zotero-snap/common/Zotero/storage/B9JU4LQ2/Gretton et al. - 2008 - A Kernel Method for the Two-Sample Problem.pdf;/home/james/snap/zotero-snap/common/Zotero/storage/ZC7P7EHW/0805.html}
+}
+
+@article{Hunter:2007,
+  title = {Matplotlib: {{A 2D}} Graphics Environment},
+  author = {Hunter, J. D.},
+  year = {2007},
+  journal = {Computing in Science \& Engineering},
+  volume = {9},
+  number = {3},
+  pages = {90--95},
+  publisher = {IEEE COMPUTER SOC},
+  doi = {10.1109/MCSE.2007.55},
+  abstract = {Matplotlib is a 2D graphics package used for Python for application development, interactive scripting, and publication-quality image generation across user interfaces and operating systems.}
+}
+
+@misc{jax2018github,
+  title = {{{JAX}}: Composable Transformations of {{Python}}+{{NumPy}} Programs},
+  author = {Bradbury, James and Frostig, Roy and Hawkins, Peter and Johnson, Matthew James and Leary, Chris and Maclaurin, Dougal and Necula, George and Paszke, Adam and VanderPlas, Jake and {Wanderman-Milne}, Skye and Zhang, Qiao},
+  year = {2018}
+}
+
+@misc{kingma2017adammethodstochasticoptimization,
+  title = {Adam: A Method for Stochastic Optimization},
+  author = {Kingma, Diederik P. and Ba, Jimmy},
+  year = {2017},
+  eprint = {1412.6980},
+  primaryclass = {cs.LG},
+  archiveprefix = {arXiv}
+}
+
+@inproceedings{Kluyver2016jupyter,
+  title = {Jupyter {{Notebooks}} -- a Publishing Format for Reproducible Computational Workflows},
+  booktitle = {Positioning and Power in Academic Publishing: {{Players}}, Agents and Agendas},
+  author = {Kluyver, Thomas and {Ragan-Kelley}, Benjamin and P{\'e}rez, Fernando and Granger, Brian and Bussonnier, Matthias and Frederic, Jonathan and Kelley, Kyle and Hamrick, Jessica and Grout, Jason and Corlay, Sylvain and Ivanov, Paul and Avila, Dami{\'a}n and Abdalla, Safia and Willing, Carol},
+  editor = {Loizides, F. and Schmidt, B.},
+  year = {2016},
+  pages = {87--90},
+  publisher = {IOS Press}
+}
+
+@misc{lembergerGeneralizationRegularizationDeep2017,
+  title = {On {{Generalization}} and {{Regularization}} in {{Deep Learning}}},
+  author = {Lemberger, Pirmin},
+  year = {2017},
+  month = apr,
+  number = {arXiv:1704.01312},
+  eprint = {1704.01312},
+  primaryclass = {stat},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.1704.01312},
+  urldate = {2025-08-13},
+  abstract = {Why do large neural network generalize so well on complex tasks such as image classification or speech recognition? What exactly is the role regularization for them? These are arguably among the most important open questions in machine learning today. In a recent and thought provoking paper [C. Zhang et al.] several authors performed a number of numerical experiments that hint at the need for novel theoretical concepts to account for this phenomenon. The paper stirred quit a lot of excitement among the machine learning community but at the same time it created some confusion as discussions on OpenReview.net testifies. The aim of this pedagogical paper is to make this debate accessible to a wider audience of data scientists without advanced theoretical knowledge in statistical learning. The focus here is on explicit mathematical definitions and on a discussion of relevant concepts, not on proofs for which we provide references.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Machine Learning,Mathematics - Statistics Theory,Statistics - Machine Learning,Statistics - Statistics Theory},
+  file = {/home/james/snap/zotero-snap/common/Zotero/storage/N3LCPTES/Lemberger - 2017 - On Generalization and Regularization in Deep Learning.pdf;/home/james/snap/zotero-snap/common/Zotero/storage/U94BK224/1704.html}
+}
+
+@misc{MicrosoftVscode2025,
+  title = {Microsoft/Vscode},
+  year = {2025},
+  month = jul,
+  urldate = {2025-07-27},
+  abstract = {Visual Studio Code},
+  copyright = {MIT},
+  howpublished = {Microsoft},
+  keywords = {editor,electron,microsoft,typescript,visual-studio-code}
+}
+
+@inproceedings{nairRectifiedLinearUnits2010,
+  title = {Rectified Linear Units Improve Restricted Boltzmann Machines},
+  booktitle = {Proceedings of the 27th {{International Conference}} on {{International Conference}} on {{Machine Learning}}},
+  author = {Nair, Vinod and Hinton, Geoffrey E.},
+  year = {2010},
+  month = jun,
+  series = {{{ICML}}'10},
+  pages = {807--814},
+  publisher = {Omnipress},
+  address = {Madison, WI, USA},
+  urldate = {2025-07-24},
+  abstract = {Restricted Boltzmann machines were developed using binary stochastic hidden units. These can be generalized by replacing each binary unit by an infinite number of copies that all have the same weights but have progressively more negative biases. The learning and inference rules for these "Stepped Sigmoid Units" are unchanged. They can be approximated efficiently by noisy, rectified linear units. Compared with binary units, these units learn features that are better for object recognition on the NORB dataset and face verification on the Labeled Faces in the Wild dataset. Unlike binary units, rectified linear units preserve information about relative intensities as information travels through multiple layers of feature detectors.},
+  isbn = {978-1-60558-907-7}
+}
+
+@article{robbinsStochasticApproximationMethod1951,
+  title = {A {{Stochastic Approximation Method}}},
+  author = {Robbins, Herbert and Monro, Sutton},
+  year = {1951},
+  journal = {The Annals of Mathematical Statistics},
+  volume = {22},
+  number = {3},
+  eprint = {2236626},
+  eprinttype = {jstor},
+  pages = {400--407},
+  publisher = {Institute of Mathematical Statistics},
+  issn = {0003-4851},
+  urldate = {2025-07-27},
+  abstract = {Let M(x) denote the expected value at level x of the response to a certain experiment. M(x) is assumed to be a monotone function of x but is unknown to the experimenter, and it is desired to find the solution x = ? of the equation M(x) = ?, where ? is a given constant. We give a method for making successive experiments at levels x1,x2,? in such a way that xn will tend to ? in probability.}
+}
+
+@article{rumelhartLearningRepresentationsBackpropagating1986,
+  title = {Learning Representations by Back-Propagating Errors},
+  author = {Rumelhart, David E. and Hinton, Geoffrey E. and Williams, Ronald J.},
+  year = {1986},
+  month = oct,
+  journal = {Nature},
+  volume = {323},
+  number = {6088},
+  pages = {533--536},
+  issn = {0028-0836, 1476-4687},
+  doi = {10.1038/323533a0},
+  urldate = {2025-08-09},
+  abstract = {We describe a new learning procedure, back-propagation, for networks of neurone-like units. The procedure repeatedly adjusts the weights of the connections in the network so as to minimize a measure of the difference between the actual output vector of the net and the desired output vector. As a result of the weight adjustments, internal `hidden' units which are not part of the input or output come to represent important features of the task domain, and the regularities in the task are captured by the interactions of these units. The ability to create useful new features distinguishes back-propagation from earlier, simpler methods such as the perceptron-convergence procedure1.},
+  copyright = {http://www.springer.com/tdm},
+  langid = {english}
+}
+
+@misc{tancikFourierFeaturesLet2020,
+  title = {Fourier {{Features Let Networks Learn High Frequency Functions}} in {{Low Dimensional Domains}}},
+  author = {Tancik, Matthew and Srinivasan, Pratul P. and Mildenhall, Ben and {Fridovich-Keil}, Sara and Raghavan, Nithin and Singhal, Utkarsh and Ramamoorthi, Ravi and Barron, Jonathan T. and Ng, Ren},
+  year = {2020},
+  month = jun,
+  number = {arXiv:2006.10739},
+  eprint = {2006.10739},
+  primaryclass = {cs},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2006.10739},
+  urldate = {2025-08-13},
+  abstract = {We show that passing input points through a simple Fourier feature mapping enables a multilayer perceptron (MLP) to learn high-frequency functions in low-dimensional problem domains. These results shed light on recent advances in computer vision and graphics that achieve state-of-the-art results by using MLPs to represent complex 3D objects and scenes. Using tools from the neural tangent kernel (NTK) literature, we show that a standard MLP fails to learn high frequencies both in theory and in practice. To overcome this spectral bias, we use a Fourier feature mapping to transform the effective NTK into a stationary kernel with a tunable bandwidth. We suggest an approach for selecting problem-specific Fourier features that greatly improves the performance of MLPs for low-dimensional regression tasks relevant to the computer vision and graphics communities.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Computer Vision and Pattern Recognition,Computer Science - Machine Learning},
+  file = {/home/james/snap/zotero-snap/common/Zotero/storage/CXSA9YNQ/Tancik et al. - 2020 - Fourier Features Let Networks Learn High Frequency Functions in Low Dimensional Domains.pdf}
+}
+
+@misc{thepandasdevelopmentteamPandasdevPandasPandas,
+  title = {Pandas-Dev/Pandas: {{Pandas}}},
+  author = {{The pandas development team}},
+  doi = {10.5281/zenodo.3509134},
+  copyright = {BSD-3-Clause}
+}
+
+@inproceedings{werbosApplicationsAdvancesNonlinear1982,
+  title = {Applications of Advances in Nonlinear Sensitivity Analysis},
+  booktitle = {System {{Modeling}} and {{Optimization}}},
+  author = {Werbos, Paul J.},
+  editor = {Drenick, R. F. and Kozin, F.},
+  year = {1982},
+  pages = {762--770},
+  publisher = {Springer},
+  address = {Berlin, Heidelberg},
+  doi = {10.1007/BFb0006203},
+  abstract = {The following paper summarizes the major properties and applications of a collection of algorithms involving differentiation and optimization at minimum cost. The areas of application include the sensitivity analysis of models, new work in statistical or econometric estimation, optimization, artificial intelligence and neuron modelling. The details, references and derivations can be obtained by requesting ,,Sensitivity Analysis Methods for Nonlinear Systems`` from Forecast Analysis and Evaluation Team, Quality Assurance, OSS/EIA, Room 7413, Department of Energy, Washington, DC 20461.},
+  isbn = {978-3-540-39459-4},
+  langid = {english}
+}
+
+@misc{woutsMwoutsJupytext2025,
+  title = {Mwouts/Jupytext},
+  author = {Wouts, Marc},
+  year = {2025},
+  month = aug,
+  urldate = {2025-08-14},
+  abstract = {Jupyter Notebooks as Markdown Documents, Julia, Python or R scripts},
+  copyright = {MIT},
+  keywords = {hydrogen,jupyter-notebook,jupyterlab,jupyterlab-extension,knitr,markdown,notebooks,python,rmarkdown,rstudio,version-control}
+}

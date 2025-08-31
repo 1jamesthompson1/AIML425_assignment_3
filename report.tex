@@ -1,0 +1,82 @@
+\documentclass[conference,a4paper]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+%Template version as of 6/27/2024
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{tikz}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{multirow}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+% Command to include a center figure
+\newcommand{\centerfigure}[2]{
+    \begin{figure}[htbp]
+        \centering
+        \caption{#2}
+        \includegraphics[width=0.9\linewidth]{figures/#1.png}
+        \label{fig:#1}
+    \end{figure}
+}
+\setlength{\abovedisplayskip}{1pt}
+\setlength{\belowdisplayskip}{0pt}
+\begin{document}
+
+\title{AIML 425 Assignment 3 %\\
+%{\footnotesize \textsuperscript{*}Note: Sub-titles are not captured for https://ieeexplore.ieee.org  and
+%should not be used}
+%\thanks{Identify applicable funding agency here. If none, delete this.}
+}
+
+\author{\IEEEauthorblockN{James Thompson}
+%\IEEEauthorblockA{\textit{dept. name of organization (of Aff.)} \\
+\textit{Victoria University of Wellington}\\
+%City, Country \\
+300680096}
+
+% Figure example import part is the htbp
+% \begin{figure}[htbp]
+% \centerline{\includegraphics{fig1.png}}
+% \caption{Example of a figure caption.}
+% \label{fig}
+% \end{figure}
+
+\maketitle
+
+\section{Introduction}
+
+
+\section{Theory}
+
+\section{Experiments}
+
+
+\section{Conclusion}
+
+\newpage
+\section*{Statement}
+
+The code and report of the Assignment was solely completed by myself (Thompson James). The complete source code can be found here \url{https://gitea.james-server.duckdns.org/james/AIML425\_assignment\_3}, with a link to a colab notebook found here: \url{TODO}. A complete run through of the notebook takes about an hour to complete on a university lab machine.
+
+I completed my work using the following tools:
+\begin{itemize}
+    \item \textbf{Jupyter Notebook \cite{Kluyver2016jupyter} and JupyterText \cite{woutsMwoutsJupytext2025}:} For interactive development and hosting.
+    \item \textbf{\LaTeX \cite{latex}:} For writing the report.
+    \item \textbf{VSCode \cite{MicrosoftVscode2025}:} As IDE.
+    \item \textbf{JAX \cite{jax2018github} and Flax \cite{flax2020github}:} For implementing the neural network and training logic.
+    \item \textbf{Matplotlib\cite{Hunter:2007} and Pandas\cite{thepandasdevelopmentteamPandasdevPandasPandas}:} For data visualization and management.
+\end{itemize}
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+
+\end{document}
