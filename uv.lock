@@ -17,7 +17,7 @@ wheels = [
 ]
 
 [[package]]
-name = "aiml425-assignment-2"
+name = "aiml425-assignment-3"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
