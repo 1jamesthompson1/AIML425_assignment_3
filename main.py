@@ -48,6 +48,7 @@ valid_batches = partial(data.create_batches, data.generate_database(2000, key))
 # %%
 reload(train)
 reload(data)
+reload(model)
 
 trained_state = train.do_complete_experiment(
     key,
@@ -55,7 +56,8 @@ trained_state = train.do_complete_experiment(
     valid_batches,
     learning_rate=0.001,
     minibatch_size=256,
-    num_epochs=50,
+    latent_dim=32,
+    num_epochs=400,
     eval_every=5,
 )
 
@@ -65,23 +67,18 @@ import matplotlib.pyplot as plt
 import jax
 import jax.numpy as jnp
 
-# Assume trained_state is returned from do_complete_experiment
-model = nnx.merge(trained_state.graphdef, trained_state.params, trained_state.counts)
+trained_model = nnx.merge(trained_state.graphdef, trained_state.params, trained_state.counts)
 
-# 1. Generate new images from random latent vectors
-def sample_and_generate(model, latent_dim, num_samples=5, rng_key=None):
-    if rng_key is None:
-        rng_key = j# %% [markdown]ax.random.PRNGKey(0)
+def sample_and_generate(trained_model, latent_dim, num_samples=5, rng_key=None):
     z = jax.random.normal(rng_key, (num_samples, latent_dim))
-    generated = model.generate(z)
+    generated = trained_model.generate(z)
     return generated
 
-# 2. Visualize reconstruction error
-def visualize_reconstruction(model, batch, rng_key=None, num_images=5):
+def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
     x = batch["input"][:num_images]
     if rng_key is None:
         rng_key = jax.random.PRNGKey(1)
-    recon_x, _, _ = model(x, rng_key)
+    recon_x, _, _ = trained_model(x, rng_key)
     fig, axes = plt.subplots(num_images, 2, figsize=(5, 2 * num_images))
     for i in range(num_images):
         axes[i, 0].imshow(x[i].reshape(28, 28), cmap='gray')
@@ -93,13 +90,10 @@ def visualize_reconstruction(model, batch, rng_key=None, num_images=5):
     plt.tight_layout()
     plt.show()
 
-# Example usage:
-# Generate images
-generated_imgs = sample_and_generate(model, latent_dim=500, num_samples=5)
+generated_imgs = sample_and_generate(trained_model, latent_dim=32, num_samples=5, rng_key=key)
 for img in generated_imgs:
     plt.imshow(img.reshape(28, 28), cmap='gray')
     plt.show()
 
-# Visualize reconstruction
 batch = next(train_batches(key=key, minibatch_size=5))
-visualize_reconstruction(model, batch, rng_key=key, num_images=5)
+visualize_reconstruction(trained_model, batch, rng_key=key, num_images=5)

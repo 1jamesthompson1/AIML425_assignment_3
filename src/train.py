@@ -28,9 +28,14 @@ class Count(nnx.Variable[nnx.A]):
 def reconstruction_error(x, y):
     return jnp.mean(jnp.square(x - y))
 
+def binary_cross_entropy_with_logits(logits, batch):
+  logits = nnx.log_sigmoid(logits)
+  return -jnp.sum(
+      batch * logits + (1.0 - batch) * jnp.log(-jnp.expm1(logits)+1e-8)
+  )
 
 def kl_divergence(mean, logvar):
-    return 0.5 * jnp.sum(jnp.exp(logvar) + jnp.square(mean) - 1 - logvar)
+    return -0.5 * jnp.sum(1 + logvar - jnp.square(mean) - jnp.exp(logvar))
 
 
 def loss_fn(params, state, batch, rng, deterministic):
@@ -40,7 +45,7 @@ def loss_fn(params, state, batch, rng, deterministic):
 
     counts = nnx.state(model, Count)
 
-    loss = reconstruction_error(x, x_recon) + kl_divergence(mean, logvar)
+    loss = binary_cross_entropy_with_logits(x_recon, x).mean() + kl_divergence(mean, logvar).mean()
 
     return loss, x_recon, counts
 
@@ -179,7 +184,7 @@ def do_complete_experiment(
     eval_every=5,
     encoder_arch=[1000, 1000, 1000],
     decoder_arch=[1000, 1000, 1000],
-    latent_dim=500,
+    latent_dim=20,
     layernorm=False,
     dropout=0.0,
     activation=nnx.relu,
