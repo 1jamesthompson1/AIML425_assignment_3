@@ -112,9 +112,6 @@ class MLP(nnx.Module):
         x = self.output(x)
         return x
 
-class TrainState(train_state.TrainState):
-    counts: nnx.State
-    graphdef: nnx.GraphDef
 
 class Count(nnx.Variable[nnx.A]):
   pass
