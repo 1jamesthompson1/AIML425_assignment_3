@@ -1,6 +1,7 @@
 import jax.numpy as jnp
 from jax import random
 import jax
+from itertools import product
 
 
 def generate_square(location, dim=(28, 28), size=10):
@@ -27,16 +28,16 @@ def generate_circle(location, dim=(28, 28), size=10):
         raise ValueError("Circle out of bounds")
     x, y = location
     yy, xx = jnp.meshgrid(jnp.arange(dim[0]), jnp.arange(dim[1]), indexing="ij")
-    mask = (xx - x) ** 2 + (yy - y) ** 2 <= size / 2**2
+    mask = (xx - x) ** 2 + (yy - y) ** 2 <= size
     return mask.astype(jnp.float32)
 
 
 def generate_triangle(location, dim=(28, 28), size=10):
     if (
-        location[0] + size // 2 > dim[0]
-        or location[0] - size // 2 < 0
-        or location[1] + size // 4 > dim[1]
-        or location[1] - size // 4 < 0
+        location[0] + size // 4 > dim[0]
+        or location[0] - size // 4 < 0
+        or location[1] + size // 2 > dim[1]
+        or location[1] - size // 2 < 0
     ):
         raise ValueError("Triangle out of bounds")
 
@@ -49,7 +50,7 @@ def generate_triangle(location, dim=(28, 28), size=10):
     return image
 
 
-def generate_database(num, key):
+def generate_database(num, key, size_bounds=(10, 10)):
     shapes = [generate_square, generate_circle, generate_triangle]
 
     images = []
@@ -60,7 +61,7 @@ def generate_database(num, key):
         key, subkey1, subkey2, subkey3 = random.split(key, 4)
         shape_idx = random.randint(subkey1, (to_add,), 0, len(shapes))
         locations = random.randint(subkey2, (to_add, 2), 0, 28)
-        sizes = random.randint(subkey3, (to_add,), 2, 15)
+        sizes = random.randint(subkey3, (to_add,), size_bounds[0], size_bounds[1])
 
         def make_image(idx, loc, size):
             try:
@@ -101,3 +102,21 @@ def create_batches(x_data, minibatch_size, key=None):
             "input": x_data[start_idx:],
         }
         yield batch
+
+
+def generate_all_possible_images(dim=(28,28), sizes=[10]):
+    shapes = [generate_square, generate_circle, generate_triangle]
+    images = []
+
+    def make_image(idx, loc, size):
+        try:
+            return shapes[idx](location=loc, size=size)
+        except ValueError:
+            return None
+
+    for size, shape_idx, x, y in product(sizes, range(len(shapes)), range(dim[0]), range(dim[1])):
+        img = make_image(shape_idx, (x, y), size)
+        if img is not None:
+            images.append(img)
+    
+    return jnp.array(images)

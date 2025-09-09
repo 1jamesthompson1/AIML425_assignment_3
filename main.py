@@ -1,16 +1,13 @@
 # %% Start up
-import importlib
-import jax.numpy as jnp
 from flax import nnx
+import matplotlib.pyplot as plt
 
-from jax import random, vmap
+from jax import random
 from importlib import reload
 import utils
 from functools import partial
-import matplotlib.pyplot as plt
-import pandas as pd
 
-from src import model, train, data
+from src import model, train, data, inspect
 
 key = random.key(42)
 
@@ -18,6 +15,7 @@ reload(utils)
 reload(model)
 reload(train)
 reload(data)
+reload(inspect)
 
 # %% [markdown]
 
@@ -27,15 +25,11 @@ reload(data)
 
 # %%
 reload(data)
-def vis(img):
-    plt.imshow(img, cmap='gray')
-    plt.grid(True, which='both')
-    plt.show()
+reload(inspect)
 
+database = data.generate_database(100, key)
 
-# database = data.generate_database(1000, key)
-
-# vis(database[23])
+inspect.vis_grid(database[:25])
 
 train_batches = partial(data.create_batches, data.generate_database(10000, key))
 
@@ -61,39 +55,36 @@ trained_state = train.do_complete_experiment(
     eval_every=5,
 )
 
-# %% Inspecting the output
-
-import matplotlib.pyplot as plt
-import jax
-import jax.numpy as jnp
-
 trained_model = nnx.merge(trained_state.graphdef, trained_state.params, trained_state.counts)
 
-def sample_and_generate(trained_model, latent_dim, num_samples=5, rng_key=None):
-    z = jax.random.normal(rng_key, (num_samples, latent_dim))
-    generated = trained_model.generate(z)
-    return generated
+# %% Inspecting the output
+reload(inspect)
 
-def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
-    x = batch["input"][:num_images]
-    if rng_key is None:
-        rng_key = jax.random.PRNGKey(1)
-    recon_x, _, _ = trained_model(x, rng_key)
-    fig, axes = plt.subplots(num_images, 2, figsize=(5, 2 * num_images))
-    for i in range(num_images):
-        axes[i, 0].imshow(x[i].reshape(28, 28), cmap='gray')
-        axes[i, 0].set_title("Input")
-        axes[i, 1].imshow(recon_x[i].reshape(28, 28), cmap='gray')
-        axes[i, 1].set_title("Reconstruction")
-        for ax in axes[i]:
-            ax.axis('off')
-    plt.tight_layout()
-    plt.show()
 
-generated_imgs = sample_and_generate(trained_model, latent_dim=32, num_samples=5, rng_key=key)
-for img in generated_imgs:
-    plt.imshow(img.reshape(28, 28), cmap='gray')
-    plt.show()
+batch = next(train_batches(key=key, minibatch_size=10))
+inspect.visualize_reconstruction(trained_model, batch, rng_key=key, num_images=10)
 
-batch = next(train_batches(key=key, minibatch_size=5))
-visualize_reconstruction(trained_model, batch, rng_key=key, num_images=5)
+
+# %% [markdown]
+# Understanding the performance of the genearttion
+
+# %%
+reload(inspect)
+generated_imgs = inspect.sample_and_generate(trained_model, latent_dim=32, num_samples=9, rng_key=key)
+
+inspect.vis_grid(generated_imgs)
+
+# %%
+reload(inspect)
+reload(data)
+
+all_possible_images = data.generate_all_possible_images(sizes=[10])
+
+print(f"Number of possible images: {len(all_possible_images)}, with shape {all_possible_images.shape}")
+
+
+performance = inspect.final_generation_performance_evaluation(
+    trained_model, training_data=all_possible_images, latent_dim=32, num_samples=100, rng_key=key
+)
+
+performance
