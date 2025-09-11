@@ -32,10 +32,8 @@ hyperparameters) you select.
 ▶ Use your VAE to generate new data and select and provide values for a suitable
 quantitative measure of its performance.
 ▶ Modify your VAE into a system that does not use the ELBO:
-▶ Make it into a basic autoencoder (MSE) that ensures that the distribution
-of the latent layer is iid Gaussian (MMD, or, easier, variance control).
-▶ Now add Gaussian noise in the latent layer with a fixed variance (you set
-the strength).
+    ▶ Make it into a basic autoencoder (MSE) that ensures that the distribution of the latent layer is iid Gaussian (MMD, or, easier, variance control).
+    ▶ Now add Gaussian noise in the latent layer with a fixed variance (you set the strength).
 ▶ For the modified VAE estimate the information passing through the latent
 layer, in bits (see equation (2) ).
 ▶ Attempt to explain what this information represents for your reconstruction.

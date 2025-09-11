@@ -56,9 +56,9 @@ class VAE(nnx.Module):
 
     def generate(self, z):
         return nnx.sigmoid(self.decoder(z))
-
+    
 
 def reparameterize(rng, mean, logvar):
-    std = jnp.exp(0.5 * logvar)
+    std = jnp.exp(logvar)
     eps = random.normal(rng, logvar.shape)
     return mean + eps * std
