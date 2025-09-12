@@ -2,6 +2,7 @@ import jax.numpy as jnp
 from jax import random
 import jax
 import time
+import math
 from itertools import product
 
 
@@ -14,20 +15,42 @@ def generate_square(x, y, xx, yy, size=10):
     return mask.astype(jnp.float32)
 
 
-def generate_circle(x, y, xx, yy, size=10):
-    """
-    Make a circle centered at (x, y) with given radius (size).
-    """
-    mask = (xx - x) ** 2 + (yy - y) ** 2 <= size
-    return mask.astype(jnp.float32)
+# def generate_circle(x, y, xx, yy, size=10):
+#     """
+#     Make a circle centered at (x, y) with given radius (size).
+#     """
+#     mask = (xx - x) ** 2 + (yy - y) ** 2 <= (size//2) ** 2
+#     return mask.astype(jnp.float32)
 
+def generate_circle(x, y, xx, yy, size=10, subsamples=4):
+    """
+    Make a circle centered at (x, y) with given diameter (size).
+    Uses supersampling to get smoother edges.
+    """
+    radius = size / 2.0
+    
+    # Make fractional grid offsets for subpixel sampling
+    offsets = jnp.linspace(-0.5, 0.5, subsamples)
+    xv, yv = jnp.meshgrid(offsets, offsets, indexing="ij")
+
+    # Expand grid to subsamples
+    xx_sub = xx[..., None, None] + xv
+    yy_sub = yy[..., None, None] + yv
+
+    # Compute distances from center
+    dist = jnp.hypot(xx_sub - x, yy_sub - y)
+    mask = (dist <= radius).astype(jnp.float32)
+
+    # print(f"Message to understand what is going on: {mask.shape=}, {mask.mean(axis=(-1, -2)).shape=}\n\nxv={xv.shape}, yv={yv.shape} and {xx_sub.shape=}, {yy_sub.shape=}")
+    
+    return (mask.mean(axis=(-1, -2)) > 0.5).astype(jnp.float32)
 
 def generate_triangle(x, y, xx, yy, size=10):
     """
-    Make a upright isosceles trianlge with the base centered at (x, y + size//2) and height size.
+    Make a upright isosceles triangle with the base centered at (x, y + height) where height = size * 5 // 6. Made  slightly shorter to better fit the overall size of the image.
     """
-    
-    in_triangle = (yy >= y) & (yy < y + size//1.2) & (xx >= x - (yy - y)) & (xx <= x + (yy - y))
+    height = size * 5 // 6
+    in_triangle = (yy >= y) & (yy < y + height) & (xx >= x - (yy - y)) & (xx <= x + (yy - y))
     
     return in_triangle.astype(jnp.float32)
 
@@ -37,19 +60,25 @@ def valid_bounds(shape, size, dim):
     '''
     match shape:
         case "square" | 0:
+            # Square: top-left at (x,y), extends to (x+size-1, y+size-1)
             return (
-                0, dim[0] - size,
-                0, dim[1] - size
+                0, dim[0] - size+1,
+                0, dim[1] - size+1
             )
         case "circle" | 1:
+            # Circle: centered at (x,y) with radius=size, extends size pixels in all directions
+            # Bounds should be inclusive so need to use floor and ceil
+            radius = size / 2
             return (
-                size // 2, dim[0] - size // 2,
-                size // 2, dim[1] - size // 2
+                math.floor(radius), dim[0] - math.ceil(radius),
+                math.floor(radius), dim[1] - math.ceil(radius)
             )
         case "triangle" | 2:
+            # Triangle: centered at (x,y), height=size*5//6, base width at bottom = 2*height
+            height = size * 5 // 6
             return (
-                size // 1.2, dim[0] - size // 1.2,
-                size // 1.2, dim[1] - size // 1.2
+                height, dim[0] - height,
+                0, dim[1] - height
             )
         case _:
             raise ValueError("Unknown shape")

@@ -21,13 +21,13 @@ reload(inspect)
 
 # # Generate data
 
-# The data generated will be images of size 28x28 of shapes at different locations. A single shape per image.
+# The data generated will be images of size 28x28 of shapes at different locations. A single shape per image. Assuming black and white so no anti-aliasing.
 
 # %%
 reload(data)
 reload(inspect)
 
-database = data.generate_database(100, key)
+database = data.generate_database(100, random.key(44), size_bounds=[10,10])
 
 inspect.vis_grid(database[:25])
 
