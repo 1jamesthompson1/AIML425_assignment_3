@@ -8,6 +8,7 @@ from optax import adam
 
 import matplotlib.pyplot as plt
 import time
+from functools import partial
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -26,6 +27,14 @@ class Count(nnx.Variable[nnx.A]):
 
 
 def reconstruction_error(x, y):
+    '''
+    Simple mean squared error reconstruction loss
+
+    x: original input
+    y: reconstructed input
+    
+    returns: mean squared error between x and y, averaged over all dimensions
+    '''
     return jnp.mean(jnp.square(x - y))
 
 def binary_cross_entropy_with_logits(logits, batch):
@@ -38,7 +47,7 @@ def kl_divergence(mean, logvar):
     return -0.5 * jnp.sum(1 + logvar - jnp.square(mean) - jnp.exp(logvar))
 
 
-def loss_fn(params, state, batch, rng, deterministic):
+def vae_loss_fn(params, state, batch, rng, deterministic):
     x = batch["input"]
     model = nnx.merge(state.graphdef, params, state.counts)
     x_recon, mean, logvar = model(x, rng, deterministic=deterministic)
@@ -47,6 +56,21 @@ def loss_fn(params, state, batch, rng, deterministic):
 
     loss = binary_cross_entropy_with_logits(x_recon, x).mean() + kl_divergence(mean, logvar).mean()
 
+    return loss, x_recon, counts
+
+def ae_loss_fn(params, state, batch, rng, deterministic, regularization_weight=1):
+
+    x = batch["input"]
+    
+    model = nnx.merge(state.graphdef, params, state.counts)
+    x_recon, z = model(x, rng, deterministic=deterministic)
+
+    reconstruction_error_val = reconstruction_error(x, x_recon)
+
+    var_penalty = jnp.mean((jnp.var(z, axis=0) - 1) ** 2)
+
+    loss = reconstruction_error_val + regularization_weight * var_penalty
+    counts = nnx.state(model, Count)
     return loss, x_recon, counts
 
 
@@ -77,6 +101,7 @@ def train_model(
     state,
     train_batches,
     valid_batches,
+    loss_fn,
     metrics,
     num_epochs,
     minibatch_size,
@@ -104,7 +129,7 @@ def train_model(
         # Train on all training batches
         for batch in train_batches(key=epoch_key, minibatch_size=minibatch_size):
             batch_key = random.split(batch_key)[1]
-            state, metrics_dict = train_step(state, batch, rng=batch_key)
+            state, metrics_dict = train_step(state, loss_fn, batch, rng=batch_key)
             metrics.update(**metrics_dict)
         train_metrics = metrics.compute()
         metrics_history["train_loss"].append(train_metrics["loss"])
@@ -118,7 +143,7 @@ def train_model(
             batch_key = epoch_key
             for batch in valid_batches(minibatch_size=minibatch_size, key=epoch_key):
                 batch_key = random.split(batch_key, 1)[1]
-                metrics_dict = eval_step(state, batch, rng=batch_key)
+                metrics_dict = eval_step(state, loss_fn, batch, rng=batch_key)
                 metrics.update(**metrics_dict)
             val_metrics = metrics.compute()
             metrics_history["val_loss"].append(val_metrics["loss"])
@@ -157,8 +182,8 @@ def train_model(
     return state
 
 
-@jax.jit
-def train_step(state, batch, rng):
+@partial(jax.jit,static_argnames=["loss_fn"])
+def train_step(state, loss_fn, batch, rng):
     def local_fn(params, rng):
         loss, _, counts = loss_fn(params, state, batch, rng, False)
         return loss, counts
@@ -169,8 +194,8 @@ def train_step(state, batch, rng):
     return state, {"loss": loss}
 
 
-@jax.jit
-def eval_step(state, batch, rng):
+@partial(jax.jit,static_argnames=["loss_fn"])
+def eval_step(state, loss_fn, batch, rng):
     return {"loss": loss_fn(state.params, state, batch, rng, True)[0]}
 
 
@@ -178,6 +203,9 @@ def do_complete_experiment(
     key,
     train_batches,
     valid_batches,
+    model_class,
+    loss_fn,
+    model_kwargs={},
     learning_rate=0.005,
     minibatch_size=256,
     num_epochs=50,
@@ -194,7 +222,7 @@ def do_complete_experiment(
     temp = train_batches(key=key, minibatch_size=minibatch_size)
     input_dim = temp.__next__()["input"].shape[-1]
 
-    model = VAE(
+    model = model_class(
         rngs=nnx.Rngs(42),
         input=input_dim,
         encoder_arch=encoder_arch,
@@ -202,6 +230,7 @@ def do_complete_experiment(
         latent_dim=latent_dim,
         dropout=dropout,
         layernorm=layernorm,
+        **model_kwargs,
     )
 
     graphdef, params, counts = nnx.split(model, nnx.Param, nnx.Variable)
@@ -247,6 +276,7 @@ def do_complete_experiment(
         state,
         train_batches,
         valid_batches,
+        loss_fn,
         metrics,
         num_epochs=num_epochs,
         eval_every=eval_every,

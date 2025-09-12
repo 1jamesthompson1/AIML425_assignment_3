@@ -1,6 +1,8 @@
 # This code will be to generate some graphs as well as performance test the model.
 import matplotlib.pyplot as plt
 from jax import random, numpy as jnp
+import pandas as pd
+import seaborn as sns
 import math
 
 def vis_grid(images, grid_shape=None):
@@ -34,7 +36,7 @@ def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
     x = batch["input"][:num_images]
     if rng_key is None:
         rng_key = random.PRNGKey(1)
-    recon_x, _, _ = trained_model(x, rng_key)
+    recon_x, *_ = trained_model(x, rng_key)
     fig, axes = plt.subplots(num_images, 2, figsize=(5, 2 * num_images))
     for i in range(num_images):
         axes[i, 0].imshow(x[i].reshape(28, 28), cmap='gray')
@@ -46,7 +48,40 @@ def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
     plt.tight_layout()
     plt.show()
 
+def visualize_latent_space(trained_model, batch, group_size=16):
     
+    # x = batch["input"]
+    # z = trained_model(x, z_rng=None, deterministic=True)[1]
+
+    # z_dim = z.shape[1]
+    # fig, axes = plt.subplots(1, z_dim, figsize=(5 * z_dim, 5))
+    # for i in range(z_dim):
+    #     axes[i].hist(z[:, i], bins=50, density=True)
+    #     axes[i].set_title(f"Latent Dimension {i + 1}")
+    #     axes[i].grid(True)
+
+    # plt.tight_layout()
+    # plt.show()
+    x = batch["input"]
+    z = trained_model(x, z_rng=None, deterministic=True)[1]  # (N, z_dim)
+
+    z_dim = z.shape[1]
+
+    # Put into tidy DataFrame
+    df = pd.DataFrame(z, columns=[f"dim_{i+1}" for i in range(z_dim)])
+    df_long = df.melt(var_name="dimension", value_name="value")
+
+
+    plt.figure(figsize=(8, 0.5*len(df_long['dimension'].unique())))
+    sns.violinplot(
+        data=df_long,
+        x="value", y="dimension",
+        scale="width", inner=None,
+        orient="h", linewidth=0
+    )
+    plt.tight_layout()
+    plt.show()
+
 def coverage_estimation(trained_model, num_samples=1000, rng_key=None, threshold=0.5):
     generated = sample_and_generate(trained_model, num_samples, rng_key)
     binary_generated = (generated > threshold).astype(jnp.float32)

@@ -4,9 +4,10 @@ import jax.random as random
 
 
 class Encoder(nnx.Module):
-    def __init__(self, dim, latent_dim, arch, rngs, dropout=0.0, layernorm=False):
+    def __init__(self, dim, latent_dim, arch, rngs, dropout=0.0, layernorm=False, modelvar=True):
         self.latent_dim = latent_dim
 
+        self.modelvar = modelvar
         self.dropout = dropout
         self.layernorm = layernorm
 
@@ -30,7 +31,8 @@ class Encoder(nnx.Module):
                 self.dropouts.append(None)
 
         self.mean = nnx.Linear(arch[-1], latent_dim, rngs=rngs)
-        self.logvar = nnx.Linear(arch[-1], latent_dim, rngs=rngs)
+        if modelvar:
+            self.logvar = nnx.Linear(arch[-1], latent_dim, rngs=rngs)
 
     def __call__(self, x, rngs, deterministic=False):
         for i, layer in enumerate(self.hidden_layers):
@@ -41,8 +43,11 @@ class Encoder(nnx.Module):
             if self.dropouts[i] is not None:
                 x = self.dropouts[i](x, deterministic=deterministic)
         mean = self.mean(x)
-        logvar = self.logvar(x)
-        return mean, logvar
+        if self.modelvar:
+            logvar = self.logvar(x)
+            return mean, logvar
+        else:
+            return mean
 
 
 class Decoder(nnx.Module):
@@ -130,3 +135,49 @@ def reparameterize(rng, mean, logvar):
     std = jnp.exp(logvar)
     eps = random.normal(rng, logvar.shape)
     return mean + eps * std
+
+
+class AutoEncoder(nnx.Module):
+    def __init__(
+        self,
+        input,
+        latent_dim,
+        encoder_arch,
+        decoder_arch,
+        rngs,
+        dropout=0.0,
+        layernorm=False,
+        latent_noise_scale=0.0
+    ):
+        self.latent_dim = latent_dim
+        self.latent_noise_scale = latent_noise_scale
+        self.encoder = Encoder(
+            dim=input,
+            latent_dim=latent_dim,
+            arch=encoder_arch,
+            rngs=rngs,
+            dropout=dropout,
+            layernorm=layernorm,
+            modelvar=False,
+        )
+        self.decoder = Decoder(
+            dout=input,
+            latent_dim=latent_dim,
+            arch=decoder_arch,
+            rngs=rngs,
+            dropout=dropout,
+            layernorm=layernorm,
+        )
+
+    def __call__(self, x, z_rng, deterministic=False):
+        mean = self.encoder(x, rngs=z_rng, deterministic=deterministic)
+        if not deterministic and self.latent_noise_scale > 0.0:
+            noise = random.normal(z_rng) * self.latent_noise_scale
+            z = mean + noise
+        else:
+            z = mean
+        recon_x = self.decoder(z, rngs=z_rng, deterministic=deterministic)
+        return recon_x, mean
+
+    def generate(self, z):
+        return nnx.sigmoid(self.decoder(z, rngs=None, deterministic=True))
