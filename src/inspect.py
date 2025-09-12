@@ -25,8 +25,8 @@ def vis_grid(images, grid_shape=None):
     plt.tight_layout()
     plt.show()
 
-def sample_and_generate(trained_model, latent_dim, num_samples=5, rng_key=None):
-    z = random.normal(rng_key, (num_samples, latent_dim))
+def sample_and_generate(trained_model, num_samples=5, rng_key=None):
+    z = random.normal(rng_key, (num_samples, trained_model.latent_dim))
     generated = trained_model.generate(z)
     return generated
 
@@ -47,39 +47,45 @@ def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
     plt.show()
 
     
-def final_generation_performance_evaluation(
-        trained_model, training_data, latent_dim, num_samples=100, rng_key=None, distance='euclidean'
+def coverage_estimation(trained_model, num_samples=1000, rng_key=None, threshold=0.5):
+    generated = sample_and_generate(trained_model, num_samples, rng_key)
+    binary_generated = (generated > threshold).astype(jnp.float32)
+    unique_images = jnp.unique(binary_generated, axis=0)
+    coverage = unique_images.shape[0] / num_samples
+    return coverage
+
+def nearest_neighbor_performance_evaluation(
+        trained_model, training_data, num_samples=100, rng_key=None, distance='euclidean'
     ):
     '''
     This will get the final performance of generations.
     
     It will do this by finding the closest distance between generated images and any theoretical image possible in the training data.
     
-    The distance is currently euclidean. However instead it could be changed to other metrics like using athreshold to mark a pixel as on or off then calculate hamming distance. Or instead use a threshold to mark a match or not and count the number of unknowns.
+    The distance is currently euclidean. However instead it could be changed to other metrics like using a threshold to mark a pixel as on or off then calculate hamming distance. Or instead use a threshold to mark a match or not and count the number of unknowns.
     
     It will then average these distances to get a final performance metric.
     '''
     
-    generated_imgs = sample_and_generate(trained_model, latent_dim, num_samples, rng_key)
+    generated_imgs = sample_and_generate(trained_model, num_samples, rng_key)
     
-    # Flatten training data: (samples, 28, 28) -> (samples, 784)
+    # Flatten both datasets: (samples, 28, 28) -> (samples, 784)
     training_flat = training_data.reshape(training_data.shape[0], -1)
-
+    generated_flat = generated_imgs.reshape(generated_imgs.shape[0], -1)
     
-    min_distances = []
-    for gen_img in generated_imgs:
-        distances = None
-
-        match distance:
-            case 'euclidean':
-                distances = jnp.linalg.norm(training_flat - gen_img, axis=1)
-            case _:
-                raise ValueError(f"Unsupported distance metric: {distance}")
-        
-        min_distances.append(jnp.min(distances))
+    # Compute pairwise distances in a vectorized way
+    if distance == 'euclidean':
+        # Expand dims for broadcasting: (num_gen, 1, 784) - (1, num_train, 784) -> (num_gen, num_train, 784)
+        diff = generated_flat[:, None, :] - training_flat[None, :, :]
+        distances = jnp.linalg.norm(diff, axis=-1)  # Shape: (num_gen, num_train)
+    else:
+        raise ValueError(f"Unsupported distance metric: {distance}")
     
-    # Average the minimum distances
-    avg_distance = jnp.mean(jnp.array(min_distances))
+    # Find min distance for each generated image and average
+    min_distances = jnp.min(distances, axis=1)
+    avg_distance = jnp.mean(min_distances)
+    
+    return avg_distance
 
     return avg_distance
 

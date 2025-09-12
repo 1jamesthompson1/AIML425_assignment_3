@@ -51,8 +51,11 @@ trained_state = train.do_complete_experiment(
     learning_rate=0.001,
     minibatch_size=256,
     latent_dim=32,
+    # encoder_arch=[2000, 2000, 2000],
+    # decoder_arch=[2000, 2000, 2000],
     num_epochs=400,
     eval_every=5,
+    # dropout=0.2,
 )
 
 trained_model = nnx.merge(trained_state.graphdef, trained_state.params, trained_state.counts)
@@ -70,7 +73,7 @@ inspect.visualize_reconstruction(trained_model, batch, rng_key=key, num_images=1
 
 # %%
 reload(inspect)
-generated_imgs = inspect.sample_and_generate(trained_model, latent_dim=32, num_samples=9, rng_key=key)
+generated_imgs = inspect.sample_and_generate(trained_model, num_samples=9, rng_key=key)
 
 inspect.vis_grid(generated_imgs)
 
@@ -83,8 +86,11 @@ all_possible_images = data.generate_all_possible_images(sizes=[10])
 print(f"Number of possible images: {len(all_possible_images)}, with shape {all_possible_images.shape}")
 
 
-performance = inspect.final_generation_performance_evaluation(
-    trained_model, training_data=all_possible_images, latent_dim=32, num_samples=100, rng_key=key
+performance = inspect.nearest_neighbor_performance_evaluation(
+    trained_model, training_data=all_possible_images, num_samples=100, rng_key=key
 )
 
 performance
+
+# coverage = inspect.coverage_estimation(trained_model, num_samples=10000, rng_key=key)
+# print(f"Coverage estimate: {coverage:.4f}")

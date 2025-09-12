@@ -200,6 +200,8 @@ def do_complete_experiment(
         encoder_arch=encoder_arch,
         decoder_arch=decoder_arch,
         latent_dim=latent_dim,
+        dropout=dropout,
+        layernorm=layernorm,
     )
 
     graphdef, params, counts = nnx.split(model, nnx.Param, nnx.Variable)
