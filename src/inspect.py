@@ -122,5 +122,11 @@ def nearest_neighbor_performance_evaluation(
     
     return avg_distance
 
-    return avg_distance
+def estimate_information_rate(trained_model, batch, rng_key=None, num_bins=30):
+    x = batch["input"]
+    z = trained_model(x, z_rng=None, deterministic=True)[1]  # (N, z_dim)
 
+    information = 1/2 * jnp.sum(jnp.log2(1 + (jnp.var(z, axis=0) / trained_model.latent_noise_scale)), axis=0)
+
+    return information
+    

@@ -30,20 +30,43 @@ def reconstruction_error(x, y):
     '''
     Simple mean squared error reconstruction loss
 
-    x: original input
-    y: reconstructed input
-    
-    returns: mean squared error between x and y, averaged over all dimensions
+    x: original input (n_batch, n_features)
+    y: reconstructed input (n_batch, n_features)
+
+    returns: mean squared error between x and y (scalar)
     '''
     return jnp.mean(jnp.square(x - y))
 
-def binary_cross_entropy_with_logits(logits, batch):
-  logits = nnx.log_sigmoid(logits)
-  return -jnp.sum(
-      batch * logits + (1.0 - batch) * jnp.log(-jnp.expm1(logits)+1e-8)
-  )
+def binary_cross_entropy_with_logits(x_recon, x):
+    '''
+    BCE of x_recon (logits) and x (binary)
+
+    x_recon: (n_batch, n_features) logits
+    x: (n_batch, n_features) binary
+    
+    Assumes x is in {0, 1} and x_recon are logits (i.e. pre-sigmoid values).
+
+    returns: (n_batch,) BCE for each element in the batch
+    '''
+    logits = x_recon
+    
+    logits = nnx.log_sigmoid(logits)
+    return -jnp.sum(
+        x * logits + (1.0 - x) * jnp.log(-jnp.expm1(logits)+1e-8)
+    )
 
 def kl_divergence(mean, logvar):
+    '''
+    KL divergence between N(mean, var) and N(0, 1)
+
+    mean: (n_batch, latent_dim)
+    logvar: (n_batch, latent_dim)
+    
+    Computes KL divergence for each element in the batch and sums over latent dimensions. Can use the analytical form of KL.
+    
+    returns: (n_batch,) KL divergence for each element in the batch
+    
+    '''
     return -0.5 * jnp.sum(1 + logvar - jnp.square(mean) - jnp.exp(logvar))
 
 

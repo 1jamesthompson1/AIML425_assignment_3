@@ -18,8 +18,6 @@ and dimensionalities of the latent vector (select a range of interesting setting
 ▶ Create a generative system from your autoencoder, define a suitable quality
 measure, and quantify the generative performance of your autoencoder.
 ▶ Extend your autoencoder study with an interesting direction of your choice.
-15
-
 
 ## Assignments II
 

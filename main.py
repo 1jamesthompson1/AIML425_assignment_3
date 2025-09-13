@@ -3,6 +3,7 @@ from flax import nnx
 import matplotlib.pyplot as plt
 
 from jax import random
+from jax import numpy as jnp
 from importlib import reload
 import utils
 from functools import partial
@@ -173,3 +174,14 @@ performance = inspect.nearest_neighbor_performance_evaluation(
 )
 
 print(f"Nearest neighbor performance evaluation: {performance:.4f}")
+
+# %% Estimate information rate
+
+reload(inspect)
+
+info_rate = inspect.estimate_information_rate(ae_trained_model, next(train_batches(key=key, minibatch_size=1000)))
+
+print(f"Estimated information rate: {info_rate:.4f} bits")
+print(f"Which allows for {2**info_rate:.1f} distinct numbers to be represented, which is {2**info_rate/len(all_possible_images):.1f} numbers per possible image")
+real_count = 2 ** jnp.ceil(jnp.log2(info_rate)).astype(int)
+print(f"Next power of two: {real_count} bits or {real_count // 8} bytes")
