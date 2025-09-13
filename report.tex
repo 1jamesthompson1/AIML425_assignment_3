@@ -124,9 +124,29 @@ This means that for a given noise level, we can estimate the amount of informati
 
 \subsubsection{Information meaning}
 
-The information that the latent space retain can be interpreted in multiple ways. One way is that each dimension of the latent space could represent a specific feature of the input data. For example in my data generation process I generate each shape with only 3 numbers (x position, y position, size). Therefore one could imagine a 3D latent space that perfectly encodes these 3 features. In practice this is unlikely to happen, but we can still interpret the latent space as a compressed representation of the input data.
+The information that the latent space retain can be interpreted in multiple ways. One way is that each dimension of the latent space could represent a specific feature of the input data. For example in my data generation process I generate each shape with only 4 numbers (x position, y position, size, shape). Therefore one could imagine a 4D latent space that perfectly encodes these 4 features. In practice this is unlikely to happen, but we can still interpret the latent space as a compressed representation of the input data.
 
 \section{Experiments}
+
+\subsection{Dataset}
+
+The dataset used for training both models is a generated dataset of simple shapes (circles, squares, triangles) on a 28x28 canvas. Each shape is generated with random size and position. The shape may go up to the bounds but will never go out it and be clipped. There are 8 sizes ($[7,14]$) which means that there are a total 
+
+\subsection{Variational autoencoder}
+
+\subsubsection{setup}
+
+\subsubsection{generative performance}
+
+\subsection{Autoencoder}
+
+\subsubsection{setup}
+
+\subsubsection{Inforamtion rate}
+
+\subsubsection{Information meaning}
+
+\subsection{Autoencoder vs Variational autoencoder}
 
 
 \section{Conclusion}

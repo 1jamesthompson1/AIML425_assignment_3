@@ -1,7 +1,4 @@
 # %% Start up
-from flax import nnx
-import matplotlib.pyplot as plt
-
 from jax import random
 from jax import numpy as jnp
 from importlib import reload
@@ -51,8 +48,9 @@ valid_batches = partial(data.create_batches, data.generate_database(2000, key, d
 reload(train)
 reload(data)
 reload(model)
+reload(inspect)
 
-vae_trained_state = train.do_complete_experiment(
+vae_trained_model, vae_history = train.do_complete_experiment(
     key,
     train_batches,
     valid_batches,
@@ -63,12 +61,12 @@ vae_trained_state = train.do_complete_experiment(
     latent_dim=32,
     # encoder_arch=[2000, 2000, 2000],
     # decoder_arch=[2000, 2000, 2000],
-    num_epochs=400,
+    num_epochs=200,
     eval_every=5,
     # dropout=0.2,
 )
 
-vae_trained_model = nnx.merge(vae_trained_state.graphdef, vae_trained_state.params, vae_trained_state.counts)
+inspect.plot_training_history(vae_history)
 
 # %% [markdown]
 # ## Understand the performance of the model
@@ -87,7 +85,7 @@ inspect.visualize_reconstruction(vae_trained_model, batch, rng_key=key, num_imag
 
 
 # %% [markdown]
-# Understanding the performance of the genearttion
+# Understanding the performance of the generation
 
 # %%
 reload(inspect)
@@ -113,8 +111,9 @@ print(f"Coverage estimate: {coverage:.4f}")
 reload(train)
 reload(data)
 reload(model)
+reload(inspect)
 
-ae_trained_state = train.do_complete_experiment(
+ae_trained_model, ae_history = train.do_complete_experiment(
     key,
     train_batches,
     valid_batches,
@@ -133,7 +132,7 @@ ae_trained_state = train.do_complete_experiment(
     # dropout=0.2,
 )
 
-ae_trained_model = nnx.merge(ae_trained_state.graphdef, ae_trained_state.params, ae_trained_state.counts)
+inspect.plot_training_history(ae_history)
 
 # %% [markdown]
 # ## Understand the performance of the model

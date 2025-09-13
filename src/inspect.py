@@ -5,6 +5,19 @@ import pandas as pd
 import seaborn as sns
 import math
 
+def sample_and_generate(trained_model, num_samples=5, rng_key=None):
+    '''
+    Samples from the prior and generates images using the trained model.
+    '''
+    z = random.normal(rng_key, (num_samples, trained_model.latent_dim))
+    generated = trained_model.generate(z)
+    return generated
+
+################################################################################
+# 
+# ---------- Simple visualization function to see the outputs ----------
+#
+################################################################################
 def vis_grid(images, grid_shape=None):
     num_images = len(images)
     if grid_shape is None:
@@ -27,10 +40,6 @@ def vis_grid(images, grid_shape=None):
     plt.tight_layout()
     plt.show()
 
-def sample_and_generate(trained_model, num_samples=5, rng_key=None):
-    z = random.normal(rng_key, (num_samples, trained_model.latent_dim))
-    generated = trained_model.generate(z)
-    return generated
 
 def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
     x = batch["input"][:num_images]
@@ -48,20 +57,10 @@ def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
     plt.tight_layout()
     plt.show()
 
-def visualize_latent_space(trained_model, batch, group_size=16):
-    
-    # x = batch["input"]
-    # z = trained_model(x, z_rng=None, deterministic=True)[1]
-
-    # z_dim = z.shape[1]
-    # fig, axes = plt.subplots(1, z_dim, figsize=(5 * z_dim, 5))
-    # for i in range(z_dim):
-    #     axes[i].hist(z[:, i], bins=50, density=True)
-    #     axes[i].set_title(f"Latent Dimension {i + 1}")
-    #     axes[i].grid(True)
-
-    # plt.tight_layout()
-    # plt.show()
+def visualize_latent_space(trained_model, batch):
+    '''
+    Create a violin plot for each dimension in the latent space to visualize the distribution of latent variables. They are stacked vertically
+    '''
     x = batch["input"]
     z = trained_model(x, z_rng=None, deterministic=True)[1]  # (N, z_dim)
 
@@ -81,6 +80,48 @@ def visualize_latent_space(trained_model, batch, group_size=16):
     )
     plt.tight_layout()
     plt.show()
+
+def plot_training_history(history):
+    '''
+    Plot the train and val loss over epochs.
+    Will make three plots one for regular loss, and one each for the loss_recon and loss_reg components.    Will make three plots one for regular loss, and one each for the loss_recon and loss_reg components.
+    
+    Args:
+        history: A dictionary with keys 'train_loss' and 'val_loss', each containing a list of loss values per epoch.
+
+    Returns:
+        None (displays plots)
+    '''
+
+    plt.figure(figsize=(12, 8))
+
+    # Plot training losses
+    plt.plot(history['train_epochs'], history['train_loss'], label='Train Total Loss', color='blue')
+    plt.plot(history['train_epochs'], history['train_loss_recon'], label='Train Recon Loss', linestyle='--', color='green')
+    plt.plot(history['train_epochs'], history['train_loss_reg'], label='Train Reg Loss', linestyle='--',color='red')
+
+    # Plot validation losses
+    plt.plot(history['val_epochs'], history['val_loss'], label='Val Total Loss', color='cyan')
+    plt.plot(history['val_epochs'], history['val_loss_recon'], label='Val Recon Loss', linestyle='--', color='lime')
+    plt.plot(history['val_epochs'], history['val_loss_reg'], label='Val Reg Loss', linestyle='--', color='magenta')
+
+    plt.title('Training and Validation Loss vs. Epochs')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss (log scale)')
+    plt.yscale('log')
+    plt.legend()
+    plt.grid(True, which="both", ls="--")
+    plt.tight_layout()
+    plt.show()
+
+
+    
+
+################################################################################
+# 
+# ---------- Measuring the generative performance of the model ----------
+#
+################################################################################
 
 def coverage_estimation(trained_model, num_samples=1000, rng_key=None, threshold=0.5):
     generated = sample_and_generate(trained_model, num_samples, rng_key)
@@ -130,3 +171,15 @@ def estimate_information_rate(trained_model, batch, rng_key=None, num_bins=30):
 
     return information
     
+
+################################################################################
+# 
+# ---------- Understanding the information that the reconstruction  ----------
+# ---------- uses from the latent space                             ----------
+#
+################################################################################
+
+# Ideas
+# Check for correlation between known features and latent dimensions
+# Change the latent dimensions and see how the reconsutrction changes
+# Zero out latent dimensions and see how reconstruction changes similar to above.

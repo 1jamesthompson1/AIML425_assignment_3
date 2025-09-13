@@ -70,18 +70,21 @@ def kl_divergence(mean, logvar):
     return -0.5 * jnp.sum(1 + logvar - jnp.square(mean) - jnp.exp(logvar))
 
 
-def vae_loss_fn(params, state, batch, rng, deterministic):
+def vae_loss_fn(params, state, batch, rng, deterministic, kl_beta=1.0):
     x = batch["input"]
     model = nnx.merge(state.graphdef, params, state.counts)
     x_recon, mean, logvar = model(x, rng, deterministic=deterministic)
 
     counts = nnx.state(model, Count)
 
-    loss = binary_cross_entropy_with_logits(x_recon, x).mean() + kl_divergence(mean, logvar).mean()
+    reconstruction_error_val = binary_cross_entropy_with_logits(x_recon, x).mean()
+    kl_divergence_val = kl_divergence(mean, logvar).mean()
 
-    return loss, x_recon, counts
+    loss = reconstruction_error_val + kl_beta * kl_divergence_val
 
-def ae_loss_fn(params, state, batch, rng, deterministic, regularization_weight=1):
+    return loss, x_recon, counts, (reconstruction_error_val, kl_beta * kl_divergence_val)
+
+def ae_loss_fn(params, state, batch, rng, deterministic, regularization_weight=1.0):
 
     x = batch["input"]
     
@@ -94,7 +97,7 @@ def ae_loss_fn(params, state, batch, rng, deterministic, regularization_weight=1
 
     loss = reconstruction_error_val + regularization_weight * var_penalty
     counts = nnx.state(model, Count)
-    return loss, x_recon, counts
+    return loss, x_recon, counts, (reconstruction_error_val, regularization_weight * var_penalty)
 
 
 def plot_progress(metrics_history):
@@ -136,8 +139,13 @@ def train_model(
     metrics_history = {
         "train_epochs": [],
         "train_loss": [],
+        "train_loss_recon": [],
+        "train_loss_reg": [],
         "val_loss": [],
+        "val_loss_recon": [],
+        "val_loss_reg": [],
         "val_epochs": [],
+        "val_loss_parts": [],
     }
 
     epoch_key = random.split(key)[1]
@@ -156,6 +164,8 @@ def train_model(
             metrics.update(**metrics_dict)
         train_metrics = metrics.compute()
         metrics_history["train_loss"].append(train_metrics["loss"])
+        metrics_history["train_loss_recon"].append(train_metrics["reconstruction_loss"])
+        metrics_history["train_loss_reg"].append(train_metrics["regularization_loss"])
         metrics_history["train_epochs"].append(epoch)
         metrics.reset()
 
@@ -170,6 +180,8 @@ def train_model(
                 metrics.update(**metrics_dict)
             val_metrics = metrics.compute()
             metrics_history["val_loss"].append(val_metrics["loss"])
+            metrics_history["val_loss_recon"].append(val_metrics["reconstruction_loss"])
+            metrics_history["val_loss_reg"].append(val_metrics["regularization_loss"])
             metrics_history["val_epochs"].append(epoch)
             metrics.reset()
             eval_time = time.time() - eval_start_time
@@ -202,24 +214,25 @@ def train_model(
         best_val = float(jnp.min(jnp.array(metrics_history["val_loss"])))
         print(f"Best Val Loss: {best_val:.4f}")
 
-    return state
+    return state, metrics_history
 
 
 @partial(jax.jit,static_argnames=["loss_fn"])
 def train_step(state, loss_fn, batch, rng):
     def local_fn(params, rng):
-        loss, _, counts = loss_fn(params, state, batch, rng, False)
-        return loss, counts
+        loss, _, counts, parts = loss_fn(params, state, batch, rng, False)
+        return loss, (counts, parts)
 
-    grads, counts = jax.grad(local_fn, has_aux=True)(state.params, rng)
+    (grads, (counts, parts)) = jax.grad(local_fn, has_aux=True)(state.params, rng)
     state = state.apply_gradients(grads=grads)
     loss = local_fn(state.params, rng)[0]
-    return state, {"loss": loss}
+    return state, {"loss": loss, "reconstruction_loss": parts[0], "regularization_loss": parts[1]}
 
 
 @partial(jax.jit,static_argnames=["loss_fn"])
 def eval_step(state, loss_fn, batch, rng):
-    return {"loss": loss_fn(state.params, state, batch, rng, True)[0]}
+    loss, _, _, parts = loss_fn(state.params, state, batch, rng, True)
+    return {"loss": loss, "reconstruction_loss": parts[0], "regularization_loss": parts[1]}
 
 
 def do_complete_experiment(
@@ -265,7 +278,11 @@ def do_complete_experiment(
         tx=adam(learning_rate),
         counts=counts,
     )
-    metrics = nnx.MultiMetric(loss=nnx.metrics.Average("loss"))
+    metrics = nnx.MultiMetric(
+        loss=nnx.metrics.Average("loss"),
+        reconstruction_loss=nnx.metrics.Average("reconstruction_loss"),
+        regularization_loss=nnx.metrics.Average("regularization_loss"),
+    )
 
     # Create compact rich tables
     model_table = Table(title="Model", show_header=False, box=None)
@@ -295,7 +312,7 @@ def do_complete_experiment(
 
     experiment_start_time = time.time()
 
-    trained_state = train_model(
+    trained_state, history = train_model(
         state,
         train_batches,
         valid_batches,
@@ -312,4 +329,4 @@ def do_complete_experiment(
     experiment_time = time.time() - experiment_start_time
     console.print(f"[green]Experiment completed in {experiment_time:.2f}s[/green]")
 
-    return trained_state
+    return nnx.merge(trained_state.graphdef, trained_state.params, trained_state.counts), history
