@@ -28,13 +28,20 @@ reload(inspect)
 reload(data)
 reload(inspect)
 
-database = data.generate_database(100, random.key(44), size_bounds=[10,10])
+dim = (28, 28)
+size_bounds = (7, 14)
+
+database = data.generate_database(100, random.key(4), dim=dim, size_bounds=size_bounds)
 
 inspect.vis_grid(database[:25])
 
-train_batches = partial(data.create_batches, data.generate_database(10000, key))
+all_possible_images = data.generate_all_possible_images(dim=dim, size_bounds=size_bounds)
 
-valid_batches = partial(data.create_batches, data.generate_database(2000, key))
+print(f"Number of possible images: {len(all_possible_images)}, with shape {all_possible_images.shape}")
+
+train_batches = partial(data.create_batches, data.generate_database(10000, key, dim=dim, size_bounds=size_bounds))
+
+valid_batches = partial(data.create_batches, data.generate_database(2000, key, dim=dim, size_bounds=size_bounds))
 
 # %% [markdown]
 
@@ -90,12 +97,6 @@ inspect.vis_grid(generated_imgs)
 
 # %%
 reload(inspect)
-reload(data)
-
-all_possible_images = data.generate_all_possible_images(sizes=[10])
-
-print(f"Number of possible images: {len(all_possible_images)}, with shape {all_possible_images.shape}")
-
 
 performance = inspect.nearest_neighbor_performance_evaluation(
     vae_trained_model, training_data=all_possible_images, num_samples=1000, rng_key=key
@@ -103,8 +104,8 @@ performance = inspect.nearest_neighbor_performance_evaluation(
 
 print(f"Nearest neighbor performance evaluation: {performance:.4f}")
 
-# coverage = inspect.coverage_estimation(trained_model, num_samples=10000, rng_key=key)
-# print(f"Coverage estimate: {coverage:.4f}")
+coverage = inspect.coverage_estimation(vae_trained_model, num_samples=10000, rng_key=key)
+print(f"Coverage estimate: {coverage:.4f}")
 
 # %% [markdown]
 # # Train an AutoEncoder model
@@ -152,7 +153,7 @@ inspect.visualize_reconstruction(ae_trained_model, batch, rng_key=key, num_image
 
 
 # %% [markdown]
-# Understanding the performance of the genearttion
+# Understanding the performance of the generation
 
 # %%
 reload(inspect)
@@ -163,11 +164,6 @@ inspect.vis_grid(generated_imgs)
 # %%
 reload(inspect)
 reload(data)
-
-all_possible_images = data.generate_all_possible_images(sizes=[10])
-
-print(f"Number of possible images: {len(all_possible_images)}, with shape {all_possible_images.shape}")
-
 
 performance = inspect.nearest_neighbor_performance_evaluation(
     ae_trained_model, training_data=all_possible_images, num_samples=1000, rng_key=key
@@ -185,3 +181,7 @@ print(f"Estimated information rate: {info_rate:.4f} bits")
 print(f"Which allows for {2**info_rate:.1f} distinct numbers to be represented, which is {2**info_rate/len(all_possible_images):.1f} numbers per possible image")
 real_count = 2 ** jnp.ceil(jnp.log2(info_rate)).astype(int)
 print(f"Next power of two: {real_count} bits or {real_count // 8} bytes")
+
+
+# %% Explanation of what the latent space means for AE
+

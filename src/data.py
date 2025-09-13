@@ -15,6 +15,7 @@ def generate_square(x, y, xx, yy, size=10):
     return mask.astype(jnp.float32)
 
 
+# # No longer using this generate function as it doesn't have anti-aliasing so the edges are very jagged.
 # def generate_circle(x, y, xx, yy, size=10):
 #     """
 #     Make a circle centered at (x, y) with given radius (size).
@@ -54,45 +55,81 @@ def generate_triangle(x, y, xx, yy, size=10):
     
     return in_triangle.astype(jnp.float32)
 
-def valid_bounds(shape, size, dim):
-    '''
-    Returns the xmin, xmax, ymin, ymax for placing a shape of given size in a canvas of given dimensions.
-    '''
-    match shape:
-        case "square" | 0:
-            # Square: top-left at (x,y), extends to (x+size-1, y+size-1)
-            return (
-                0, dim[0] - size+1,
-                0, dim[1] - size+1
-            )
-        case "circle" | 1:
-            # Circle: centered at (x,y) with radius=size, extends size pixels in all directions
-            # Bounds should be inclusive so need to use floor and ceil
-            radius = size / 2
-            return (
-                math.floor(radius), dim[0] - math.ceil(radius),
-                math.floor(radius), dim[1] - math.ceil(radius)
-            )
-        case "triangle" | 2:
-            # Triangle: centered at (x,y), height=size*5//6, base width at bottom = 2*height
-            height = size * 5 // 6
-            return (
-                height, dim[0] - height,
-                0, dim[1] - height
-            )
-        case _:
-            raise ValueError("Unknown shape")
 
+def create_location_bounds(shape_idx, sizes, dim):
+    '''
+    vectorized way of creating valid_bounds.
+    
+    Args:
+        shape_idx: Array of shape indices (0 for square, 1 for circle, 2 for triangle).
+        sizes: Array of sizes corresponding to each shape.
+        dim: Tuple (height, width) representing the dimensions of the canvas.
 
-def generate_database(num, key, size_bounds=(10, 10), dim=(28, 28)):
+    Returns:
+        A JAX array of shape (N, 4) where N is the number of shapes, and each row contains (xmin, xmax, ymin, ymax) for the corresponding shape.
+
+    '''
+    
+    is_square = shape_idx == 0
+    is_circle = shape_idx == 1
+    is_triangle = shape_idx == 2
+    
+    # For squares
+    square_xmin = jnp.zeros_like(sizes)
+    square_xmax = dim[0] - sizes + 1
+    square_ymin = jnp.zeros_like(sizes)
+    square_ymax = dim[1] - sizes + 1
+    
+    # For circles
+    radii = sizes / 2
+    circle_xmin = jnp.floor(radii)
+    circle_xmax = dim[0] - jnp.ceil(radii)
+    circle_ymin = jnp.floor(radii)
+    circle_ymax = dim[1] - jnp.ceil(radii)
+    
+    # For triangles
+    heights = sizes * 5 // 6
+    triangle_xmin = heights
+    triangle_xmax = dim[0] - heights
+    triangle_ymin = jnp.zeros_like(sizes)
+    triangle_ymax = dim[1] - heights
+    
+    # Select bounds based on shape_idx
+    xmin = jnp.where(is_square, square_xmin, 
+                     jnp.where(is_circle, circle_xmin, triangle_xmin))
+    xmax = jnp.where(is_square, square_xmax, 
+                     jnp.where(is_circle, circle_xmax, triangle_xmax))
+    ymin = jnp.where(is_square, square_ymin, 
+                     jnp.where(is_circle, circle_ymin, triangle_ymin))
+    ymax = jnp.where(is_square, square_ymax, 
+                     jnp.where(is_circle, circle_ymax, triangle_ymax))
+    
+    return jnp.stack([xmin, xmax, ymin, ymax], axis=1)
+
+def generate_database(num, key, size_bounds, dim):
+    '''
+    Generate a database of images containing random shapes (squares, circles, triangles) at random locations and sizes.
+    
+    Args:
+        num: Number of images to generate.
+        key: JAX random key.
+        size_bounds: Tuple (min_size, max_size) for the size of the shapes, inclusive.
+        dim: Tuple (height, width) for the dimensions of the images.
+    Returns:
+        A JAX array of shape (num, dim[0], dim[1]) containing the generated images.
+
+    '''
     start_time = time.time()
 
     # Pre-generate all random numbers
     key, shapekey, locationkey, sizekey = random.split(key, 4)
     shape_idx = random.randint(shapekey, (num,), 0, 3)
+    sizes = random.randint(sizekey, (num,), size_bounds[0], size_bounds[1] + 1)
     
-    location_bounds_list = jnp.array([valid_bounds(s, size_bounds[1], dim) for s in shape_idx])
+    location_bounds_start = time.time()
+    location_bounds_list = create_location_bounds(shape_idx, sizes, dim)
 
+    print(f"Location bounds calculation took {time.time() - location_bounds_start:.2f} seconds")
     locations = random.randint(
         shape=(num, 2),
         key=locationkey,
@@ -100,7 +137,6 @@ def generate_database(num, key, size_bounds=(10, 10), dim=(28, 28)):
         maxval=location_bounds_list[:, [1, 3]],
     )
 
-    sizes = random.randint(sizekey, (num,), size_bounds[0], size_bounds[1] + 1)
 
     print(f"Random number generation took {time.time()- start_time:.2f} seconds")
 
@@ -129,7 +165,18 @@ def generate_database(num, key, size_bounds=(10, 10), dim=(28, 28)):
     return images
 
 
-def create_batches(x_data, minibatch_size, key=None):
+def create_batches(x_data, minibatch_size, key):
+    '''
+    Create mini-batches from the input data. It yields a generator that produces batches of the specified size.
+    
+    Args:
+        x_data: JAX array of shape (num_samples, height, width) or (num_samples, features).
+        minibatch_size: Size of each mini-batch.
+        key: JAX random key for shuffling the data.
+    
+    Yields:
+        A dictionary with key "input" containing a mini-batch of data.
+    '''
     x_data_flatten = x_data.reshape((x_data.shape[0], -1))
 
     x_data = jax.device_put(x_data_flatten)
@@ -157,15 +204,66 @@ def create_batches(x_data, minibatch_size, key=None):
         yield batch
 
 
-def generate_all_possible_images(dim=(28,28), sizes=[10]):
+def generate_all_possible_images(dim, size_bounds):
+    '''
+    Uses the valid_bounds and shape generation functions to generate all possible images of the given sizes and dimensions.
+    
+    Args:
+        dim: Tuple (height, width) for the dimensions of the images.
+        size_bounds: Tuple (min_size, max_size) for the size of the shapes.
+    Returns:
+        A JAX array of shape (num_images, dim[0], dim[1]) containing all possible generated images.
+    '''
     shapes = [generate_square, generate_circle, generate_triangle]
-    images = []
 
-    for i, shape in enumerate(shapes):
-        for size in sizes:
-            x_min, x_max, y_min, y_max = valid_bounds(i, size, dim)
-            for x, y in product(range(int(x_min), int(x_max)), range(int(y_min), int(y_max))):
-                img = shape(x, y, *jnp.meshgrid(jnp.arange(dim[0]), jnp.arange(dim[1]), indexing="ij"), size=size)
-                images.append(img)
-        
-    return jnp.array(images)
+    yy, xx = jnp.meshgrid(jnp.arange(dim[0]), jnp.arange(dim[1]), indexing="ij")
+
+    # all (shape_idx, size) pairs
+    possible_values = jnp.array(
+        list(product(range(len(shapes)), range(size_bounds[0], size_bounds[1] + 1)))
+    )
+    shape_idx = possible_values[:, 0]
+    sizes = possible_values[:, 1]
+
+    # bounds for each shape/size
+    bounds = create_location_bounds(shape_idx, sizes, dim)  # (N, 4)
+
+    # expand each bound into all valid (x,y) locations
+    def expand_locations(bound):
+        xmin, xmax, ymin, ymax = bound.astype(int)
+        xs = jnp.arange(xmin, xmax+1)
+        ys = jnp.arange(ymin, ymax+1)
+        xv, yv = jnp.meshgrid(xs, ys, indexing="ij")
+        return jnp.stack([xv.ravel(), yv.ravel()], axis=-1)  # (num_locs, 2)
+
+    locations_per_config = [expand_locations(b) for b in bounds]
+
+    # Flatten into one big (M, 3) array: (shape_idx, size, (x,y))
+    shape_repeated = []
+    size_repeated = []
+    locs_all = []
+    for i, locs in enumerate(locations_per_config):
+        shape_repeated.append(jnp.full((locs.shape[0],), shape_idx[i]))
+        size_repeated.append(jnp.full((locs.shape[0],), sizes[i]))
+        locs_all.append(locs)
+
+    shape_repeated = jnp.concatenate(shape_repeated)
+    size_repeated = jnp.concatenate(size_repeated)
+    locs_all = jnp.concatenate(locs_all, axis=0)
+
+    # Render function
+    def render(shape_idx, loc, size):
+        x, y = loc
+        return jax.lax.switch(
+            shape_idx,
+            [
+                lambda: generate_square(x, y, xx, yy, size),
+                lambda: generate_circle(x, y, xx, yy, size),
+                lambda: generate_triangle(x, y, xx, yy, size)
+            ]
+        )
+
+    images = jax.vmap(render)(shape_repeated, locs_all, size_repeated)
+
+    print(f"Generated {images.shape[0]} images of shape {dim}")
+    return images
