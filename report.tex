@@ -130,7 +130,9 @@ The information that the latent space retain can be interpreted in multiple ways
 
 \subsection{Dataset}
 
-The dataset used for training both models is a generated dataset of simple shapes (circles, squares, triangles) on a 28x28 canvas. Each shape is generated with random size and position. The shape may go up to the bounds but will never go out it and be clipped. There are 8 sizes ($[7,14]$) which means that there are a total 
+The dataset used for training both models is a generated dataset of simple shapes (circles, squares, triangles) on a 28x28 canvas. Each shape is generated with random size and position. The shape may go up to the bounds but will never go out it and be clipped. There are 8 sizes ($[7,14]$) which means that there are a total 8002 unique images. The bounds of sizes were determined by how small the circles still look circle (lower bound) and no taking up more than half of the canvas (upper bound). The dataset used for training is 90\% of the total possible images, and the test set is the remaining 10\%. Holding a validation allows me to test the models ability to reconstruct unseen images, and so not just memorize the training data.
+
+The size of the square determines it width/height, the size of the circle determines its diameter and the size of the triangle determines the heigh (but the size is modified to be a bit shorter to make it fit with the other image sizes). The shapes are drawn in white on a black background. The triangle is an upright isosceles triangle.
 
 \subsection{Variational autoencoder}
 
