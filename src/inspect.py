@@ -183,3 +183,98 @@ def estimate_information_rate(trained_model, batch, rng_key=None, num_bins=30):
 # Check for correlation between known features and latent dimensions
 # Change the latent dimensions and see how the reconsutrction changes
 # Zero out latent dimensions and see how reconstruction changes similar to above.
+
+def latent_space_correlation(trained_model, all_images, known_features):
+    '''
+    This will compute the correlation between each latent dimension and each known feature.
+    
+    Args:
+        trained_model: The trained auto encoder model.
+        all_images: This should be all the images that would be input. (N, 28, 28)
+        known_features: A DataFrame or array of known features corresponding to the input data. (N, num_features)
+    '''
+    flattended_images = all_images.reshape(all_images.shape[0], -1)  # (N, 784)
+    
+    # Encode the input batch to obtain the latent representations
+    z = trained_model(flattended_images, z_rng=None, deterministic=True)[1]  # (N, z_dim)
+
+    latent_dim = z.shape[1]
+    num_features = known_features.shape[1]
+
+    # Combine latent variables and known features
+    combined_data = jnp.concatenate([z, known_features], axis=1)
+
+    # Compute the full correlation matrix
+    # rowvar=False means that each column represents a variable
+    full_corr_matrix = jnp.corrcoef(combined_data, rowvar=False)
+
+    # Extract the cross-correlation matrix between latent dims and features
+    # This is the top-right block of the full correlation matrix
+    cross_corr_matrix = full_corr_matrix[:latent_dim, latent_dim:]
+
+    return cross_corr_matrix
+
+
+def visualize_latent_correlation(correlation_matrix, latent_dim_names=None, feature_names=None):
+    """
+    Visualizes the correlation matrix between latent dimensions and known features using a heatmap.
+
+    Args:
+        correlation_matrix: A 2D JAX or NumPy array of shape (latent_dim, num_features).
+        latent_dim_names: Optional list of names for the latent dimensions.
+        feature_names: Optional list of names for the features.
+    """
+    if latent_dim_names is None:
+        latent_dim_names = [f"Latent {i+1}" for i in range(correlation_matrix.shape[0])]
+    if feature_names is None:
+        feature_names = [f"Feature {i+1}" for i in range(correlation_matrix.shape[1])]
+
+    df_corr = pd.DataFrame(correlation_matrix, index=latent_dim_names, columns=feature_names)
+
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(df_corr, annot=True, cmap='coolwarm', fmt=".2f", vmin=-1, vmax=1)
+    plt.title('Correlation between Latent Dimensions and Known Features')
+    plt.ylabel('Latent Dimensions')
+    plt.xlabel('Known Features')
+    plt.show()
+
+def visualize_latent_by_category(trained_model, all_images, shape):
+    """
+    Visualizes the distribution of each latent dimension, grouped by a categorical feature.
+
+    Args:
+        trained_model: The trained autoencoder model.
+        all_images: All images to be encoded. (N, 28, 28)
+        shape: An array (N,) indicating the shape category for each image (0: square, 1: circle, 2: triangle).
+    """
+    flattended_images = all_images.reshape(all_images.shape[0], -1)
+    z = trained_model(flattended_images, z_rng=None, deterministic=True)[1]
+
+    latent_df = pd.DataFrame(z, columns=[f"Latent {i+1}" for i in range(z.shape[1])])
+    
+    # Map shape index to a name for better plotting
+    shape_map = {0: 'Square', 1: 'Circle', 2: 'Triangle'}
+    shape_names = [shape_map[int(s)] for s in shape]
+
+    # Melt the DataFrame for plotting with seaborn
+    melted_df = latent_df.copy()
+    melted_df['shape_name'] = shape_names
+    melted_df = melted_df.melt(id_vars=['shape_name'], var_name='Latent Dimension', value_name='Value')
+
+    # Create the plot
+    g = sns.catplot(
+        data=melted_df,
+        x='Value',
+        y='Latent Dimension',
+        hue='shape_name',
+        kind='violin',
+        orient='h',
+        height=max(6, z.shape[1] * 0.5),
+        aspect=1.5,
+        inner='quartile',
+        split=True,
+        palette='viridis'
+    )
+    g.fig.suptitle('Latent Dimension Distributions by Shape', y=1.02)
+    plt.tight_layout()
+    plt.show()

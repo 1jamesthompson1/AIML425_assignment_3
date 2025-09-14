@@ -264,6 +264,9 @@ def generate_all_possible_images(dim, size_bounds):
         )
 
     images = jax.vmap(render)(shape_repeated, locs_all, size_repeated)
-
+    
     print(f"Generated {images.shape[0]} images of shape {dim}")
-    return images
+
+    merged_info = jnp.stack([shape_repeated, size_repeated, locs_all[:, 0], locs_all[:, 1]], axis=1)
+
+    return images, merged_info

@@ -32,7 +32,7 @@ database = data.generate_database(100, random.key(4), dim=dim, size_bounds=size_
 
 inspect.vis_grid(database[:25])
 
-all_possible_images = data.generate_all_possible_images(dim=dim, size_bounds=size_bounds)
+all_possible_images, parameters = data.generate_all_possible_images(dim=dim, size_bounds=size_bounds)
 
 print(f"Number of possible images: {len(all_possible_images)}, with shape {all_possible_images.shape}")
 
@@ -184,3 +184,10 @@ print(f"Next power of two: {real_count} bits or {real_count // 8} bytes")
 
 # %% Explanation of what the latent space means for AE
 
+reload(inspect)
+
+correlation = inspect.latent_space_correlation(ae_trained_model, all_possible_images, parameters)
+
+inspect.visualize_latent_correlation(correlation, feature_names=["shape", "size", "x", "y"])
+
+inspect.visualize_latent_by_category(ae_trained_model, all_possible_images, parameters[:, 0])
