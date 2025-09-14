@@ -34,11 +34,28 @@ inspect.vis_grid(database[:25])
 
 all_possible_images, parameters = data.generate_all_possible_images(dim=dim, size_bounds=size_bounds)
 
-print(f"Number of possible images: {len(all_possible_images)}, with shape {all_possible_images.shape}")
+num_possible = len(all_possible_images)
 
-train_batches = partial(data.create_batches, data.generate_database(10000, key, dim=dim, size_bounds=size_bounds))
+print(f"Number of possible images: {num_possible}, with shape {all_possible_images.shape}")
 
-valid_batches = partial(data.create_batches, data.generate_database(2000, key, dim=dim, size_bounds=size_bounds))
+
+
+# Randomly sample 6,000 images from possible images to be training
+key, subkey = random.split(key)
+train_indices = random.choice(subkey, num_possible, shape=((9 * num_possible)//10,), replace=False)
+key, subkey = random.split(subkey)
+mask = jnp.ones(num_possible, dtype=bool).at[train_indices].set(False)
+valid_indices = jnp.where(mask)[0]
+
+print(f"Training on {len(train_indices)} images, validating on {len(valid_indices)} images")
+
+train_batches = partial(data.create_batches, all_possible_images[train_indices])
+
+valid_batches = partial(data.create_batches, all_possible_images[valid_indices])
+
+# train_batches = partial(data.create_batches, data.generate_database(10000, key, dim=dim, size_bounds=size_bounds))
+
+# valid_batches = partial(data.create_batches, data.generate_database(2000, key, dim=dim, size_bounds=size_bounds))
 
 # %% [markdown]
 
@@ -95,6 +112,11 @@ inspect.vis_grid(generated_imgs)
 
 # %%
 reload(inspect)
+inspect.visualize_neighbors(vae_trained_model, 15, all_possible_images, k=8, max_dist=5, rng_key=key)
+
+
+# %%
+reload(inspect)
 
 performance = inspect.nearest_neighbor_performance_evaluation(
     vae_trained_model, training_data=all_possible_images, num_samples=1000, rng_key=key
@@ -102,8 +124,13 @@ performance = inspect.nearest_neighbor_performance_evaluation(
 
 print(f"Nearest neighbor performance evaluation: {performance:.4f}")
 
-coverage = inspect.coverage_estimation(vae_trained_model, num_samples=10000, rng_key=key)
-print(f"Coverage estimate: {coverage:.4f}")
+coverage = inspect.coverage_estimation(vae_trained_model, all_possible_images, num_samples=10000, rng_key=key)
+print(f"Coverage estimate: {coverage*100:.1f}% of all possible images")
+
+d_kl_div = inspect.kl_divergence(all_possible_images, vae_trained_model, rng_key=key)
+
+print(f"D_kl(p_data || p_model) estimate: {d_kl_div:.4f} bits")
+
 
 # %% [markdown]
 # # Train an AutoEncoder model
@@ -119,17 +146,17 @@ ae_trained_model, ae_history = train.do_complete_experiment(
     valid_batches,
     model_class=model.AutoEncoder,
     model_kwargs={
-        "latent_noise_scale": 0.1
+        "latent_noise_scale": 0.2
     },
     loss_fn=train.ae_loss_fn,
     learning_rate=0.001,
-    minibatch_size=256,
+    minibatch_size=512,
     latent_dim=10,
-    # encoder_arch=[2000, 2000, 2000],
-    # decoder_arch=[2000, 2000, 2000],
-    num_epochs=100,
+    encoder_arch=[2000, 2000, 2000],
+    decoder_arch=[2000, 2000, 2000],
+    num_epochs=1000,
     eval_every=10,
-    # dropout=0.2,
+    dropout=0.2,
 )
 
 inspect.plot_training_history(ae_history)
@@ -158,6 +185,7 @@ inspect.visualize_reconstruction(ae_trained_model, batch, rng_key=key, num_image
 reload(inspect)
 generated_imgs = inspect.sample_and_generate(ae_trained_model, num_samples=9, rng_key=key)
 
+
 inspect.vis_grid(generated_imgs)
 
 # %%
@@ -165,7 +193,7 @@ reload(inspect)
 reload(data)
 
 performance = inspect.nearest_neighbor_performance_evaluation(
-    ae_trained_model, training_data=all_possible_images, num_samples=1000, rng_key=key
+    ae_trained_model, training_data=all_possible_images, num_samples=10000, rng_key=key
 )
 
 print(f"Nearest neighbor performance evaluation: {performance:.4f}")

@@ -8,10 +8,16 @@ import math
 def sample_and_generate(trained_model, num_samples=5, rng_key=None):
     '''
     Samples from the prior and generates images using the trained model.
+
+    Will batch them into no more than 100 images
     '''
-    z = random.normal(rng_key, (num_samples, trained_model.latent_dim))
-    generated = trained_model.generate(z)
-    return generated
+    batches = math.ceil(num_samples / 100)
+    generated = []
+    for i in range(batches):
+        rng_key, subkey = random.split(rng_key)
+        z = random.normal(subkey, (min(100, num_samples - i * 100), trained_model.latent_dim))
+        generated.append(trained_model.generate(z))
+    return jnp.concatenate(generated)
 
 ################################################################################
 # 
@@ -123,11 +129,174 @@ def plot_training_history(history):
 #
 ################################################################################
 
-def coverage_estimation(trained_model, num_samples=1000, rng_key=None, threshold=0.5):
+def calculate_distance(
+    generated_images, reference_images, distance
+):
+    '''
+    Calculate the distance between each generated image and all of the reference images.
+    
+    Args:
+        generated_images: JAX array of shape (N, 28, 28) or (N, 784).
+        reference_images: JAX array of shape (M, 28, 28) or (M, 784).
+        distance: Distance metric to use ('euclidean' supported).
+
+    Returns:
+        JAX array of shape (N, M) containing the pairwise distances.
+    '''
+    generated_images = generated_images.reshape(generated_images.shape[0], -1)
+    reference_images = reference_images.reshape(reference_images.shape[0], -1)
+
+    
+    batch_size = 100
+    distances = []
+    
+    for i in range(0, generated_images.shape[0], batch_size):
+        batch_end = min(i + batch_size, generated_images.shape[0])
+        batch_generated = generated_images[i:batch_end]
+
+        if distance == 'euclidean':
+            # Compute distances for this batch
+            diff = batch_generated[:, None, :] - reference_images[None, :, :]
+            batch_distances = jnp.linalg.norm(diff, axis=-1)
+        elif distance == 'hamming':
+            # Binarize images at 0.5 threshold
+            bin_generated = (batch_generated > 0.5).astype(jnp.float32)
+            bin_reference = (reference_images > 0.5).astype(jnp.float32)
+            # Compute Hamming distances
+            diff = bin_generated[:, None, :] != bin_reference[None, :, :]
+            batch_distances = jnp.sum(diff, axis=-1)
+        else:
+            raise ValueError(f"Unsupported distance metric: {distance}")
+        
+        # Find min distance for each image in this batch
+        distances.append(batch_distances)
+
+    dists = jnp.concatenate(distances, axis=0)
+    
+    return dists
+
+def visualize_neighbors(trained_model, num_images, training_data, show_histograms=False, k=5, max_dist=7, distance='euclidean', rng_key=None):
+    '''
+    Helper function to understand what euclidean distance means visually.
+
+    This will show the input image and k neighbors from the closest to the 25th, quartile, median, 3rd quartile and furthest for each input image.
+
+    Args:
+        trained_model: The trained autoencoder model.
+        num_images: The number of images to visualize.
+        training_data: The training data to find neighbors from. Shape (M, 28, 28) or (M, 784).
+        k: The number of neighbors to display.
+        max_dist: The maximum distance to consider for neighbors.
+        distance: Distance metric to use ('euclidean' supported).
+        rng_key: JAX random key for reproducibility.
+
+    Returns:
+        None (displays plots)
+    '''
+    
+    images = sample_and_generate(trained_model, num_images, rng_key)
+
+    images_flat = images.reshape(images.shape[0], -1)
+    training_data_flat = training_data.reshape(training_data.shape[0], -1)
+
+    dists = calculate_distance(images_flat, training_data_flat, distance=distance)
+
+    # Setup plots
+    fig_neighbors, axes_neighbors = plt.subplots(num_images, k + 1, figsize=(10, 2 * num_images), squeeze=False)
+    if show_histograms:
+        fig_hist, axes_hist = plt.subplots(num_images, 1, figsize=(8, 4 * num_images), squeeze=False)
+
+
+    for img_idx in range(num_images):
+        image = images_flat[img_idx]
+
+        # Only grab the indices of images within max_dist
+        within_max_mask = dists[img_idx] <= max_dist
+        dists_masked = dists[img_idx, within_max_mask]
+        training_data_masked = training_data_flat[within_max_mask]
+
+        if len(dists_masked) == 0:
+            print(f"Image {img_idx+1}: No training images found within the specified max_dist.")
+            # Display input image and blank neighbors
+            ax_row = axes_neighbors[img_idx]
+            ax_row[0].imshow(image.reshape(28, 28), cmap='gray')
+            ax_row[0].set_title(f"Input {img_idx+1}")
+            ax_row[0].axis('off')
+            for i in range(k):
+                ax_row[i+1].set_title("No neighbor")
+                ax_row[i+1].axis('off')
+            continue
+
+        print(f"Image {img_idx+1}: Found {len(dists_masked)} training images within distance {max_dist}.")
+        
+        sorted_indices_masked = jnp.argsort(dists_masked)
+        
+        # Get indices for quantiles
+        quantile_positions = jnp.linspace(0, len(sorted_indices_masked) - 1, k).astype(jnp.int32)
+        selected_indices_masked = sorted_indices_masked[quantile_positions]
+
+        # --- Plot Neighbors ---
+        ax_row = axes_neighbors[img_idx]
+        ax_row[0].imshow(image.reshape(28, 28), cmap='gray')
+        ax_row[0].set_title(f"Input {img_idx+1}")
+        ax_row[0].axis('off')
+
+        for i, neighbor_idx in enumerate(selected_indices_masked):
+            ax_row[i + 1].imshow(training_data_masked[neighbor_idx].reshape(28, 28), cmap='gray')
+            ax_row[i + 1].set_title(f"Neighbor {i+1}\n(Dist: {dists_masked[neighbor_idx]:.2f})")
+            ax_row[i + 1].axis('off')
+
+        # --- Plot Distance Histogram ---
+        if show_histograms:
+            ax_hist = axes_hist[img_idx, 0]
+            ax_hist.hist(dists_masked, bins=50, alpha=0.7, edgecolor='black')
+            ax_hist.axvline(dists_masked[selected_indices_masked].min(), color='red', linestyle='--', label='Min distance')
+            ax_hist.axvline(dists_masked[selected_indices_masked].max(), color='red', linestyle='--', label='Max distance')
+            ax_hist.set_xlabel('Distance')
+            ax_hist.set_ylabel('Frequency')
+            ax_hist.set_title(f'Distances for Input Image {img_idx+1}')
+            ax_hist.legend()
+            ax_hist.grid(True, alpha=0.3)
+
+    fig_neighbors.tight_layout()
+    if show_histograms:
+        fig_hist.tight_layout()
+    plt.show()
+
+
+def coverage_estimation(trained_model, all_possible_images, num_samples=1000, rng_key=None, distance='euclidean', neighbor_threshold=3.0):
+    '''
+    Estimate the coverage of the generated images in the latent space.
+    
+    This is done by generating a number of images, binarizing them with a threshold, finding their nearest valid image in the training data (using threshold), and then calculating the proportion of unique images generated.
+
+    Args:
+        trained_model: The trained autoencoder model.
+        all_possible_images: JAX array of shape (M, 28, 28) or (M, 784) containing all valid images.
+        num_samples: Number of images to generate for the estimation. This should be the size of the valid possible images or more.
+        rng_key: JAX random key for reproducibility.
+        neighbor_threshold: Distance threshold to consider two images as the same.
+    Returns:
+        coverage: Proportion of unique images generated.
+    '''
     generated = sample_and_generate(trained_model, num_samples, rng_key)
-    binary_generated = (generated > threshold).astype(jnp.float32)
-    unique_images = jnp.unique(binary_generated, axis=0)
-    coverage = unique_images.shape[0] / num_samples
+
+    all_flat = all_possible_images.reshape(all_possible_images.shape[0], -1)
+
+    dists = calculate_distance(generated, all_flat, distance)
+    
+    within_threshold_mask = dists <= neighbor_threshold
+
+    dists_masked = jnp.where(within_threshold_mask, dists, jnp.inf)
+
+    nearest_indices = jnp.argmin(dists_masked, axis=1)
+
+    found_neighbor_mask = jnp.any(within_threshold_mask, axis=1)
+
+    unique_indices = jnp.unique(nearest_indices[found_neighbor_mask])
+    
+    # Compute coverage as the proportion of unique images generated
+    coverage = len(unique_indices) / all_possible_images.shape[0]
     return coverage
 
 def nearest_neighbor_performance_evaluation(
@@ -144,24 +313,44 @@ def nearest_neighbor_performance_evaluation(
     '''
     
     generated_imgs = sample_and_generate(trained_model, num_samples, rng_key)
+
+    dists = calculate_distance(generated_imgs, training_data, distance=distance)
     
-    # Flatten both datasets: (samples, 28, 28) -> (samples, 784)
-    training_flat = training_data.reshape(training_data.shape[0], -1)
-    generated_flat = generated_imgs.reshape(generated_imgs.shape[0], -1)
-    
-    # Compute pairwise distances in a vectorized way
-    if distance == 'euclidean':
-        # Expand dims for broadcasting: (num_gen, 1, 784) - (1, num_train, 784) -> (num_gen, num_train, 784)
-        diff = generated_flat[:, None, :] - training_flat[None, :, :]
-        distances = jnp.linalg.norm(diff, axis=-1)  # Shape: (num_gen, num_train)
-    else:
-        raise ValueError(f"Unsupported distance metric: {distance}")
-    
-    # Find min distance for each generated image and average
-    min_distances = jnp.min(distances, axis=1)
-    avg_distance = jnp.mean(min_distances)
+    min_dists = jnp.min(dists, axis=1)  # (N,)
+    avg_distance = jnp.mean(min_dists)
     
     return avg_distance
+
+
+def kl_divergence(data, trained_model, rng_key=None):
+    '''
+    Given the trained_model and the true data distribution, this will compute the KL divergence between the two distributions.
+    The data provides the true distribution and the trained model provides the learned distribution.
+    
+    Args:
+        data: The complete set of true data (N, 28, 28)
+        trained_model: The trained autoencoder model.
+        rng_key: JAX random key for reproducibility.
+    '''
+    generated = sample_and_generate(trained_model, data.shape[0], rng_key)
+    generated = generated.reshape(generated.shape[0], -1)  # Flatten the generated
+
+    data = data.reshape(data.shape[0], -1)  # Flatten the true data
+    
+    dists = calculate_distance(generated, data, distance='euclidean')
+
+    assigned_nearests = jnp.argmin(dists, axis=1)  # (N,)
+
+    # Count occurrences of each true data point being assigned
+    counts = jnp.bincount(assigned_nearests, length=data.shape[0])
+
+    p_x = 1 / data.shape[0]  # Uniform distribution over true data
+
+    q_x = counts / generated.shape[0]  # Empirical distribution from generated data
+    
+    return jnp.sum(p_x * jnp.log2(p_x / (q_x + 1e-10)))
+    
+
 
 def estimate_information_rate(trained_model, batch, rng_key=None, num_bins=30):
     x = batch["input"]
@@ -183,6 +372,11 @@ def estimate_information_rate(trained_model, batch, rng_key=None, num_bins=30):
 # Check for correlation between known features and latent dimensions
 # Change the latent dimensions and see how the reconsutrction changes
 # Zero out latent dimensions and see how reconstruction changes similar to above.
+
+
+########################################
+# Latent space correlation with known features
+########################################
 
 def latent_space_correlation(trained_model, all_images, known_features):
     '''
@@ -278,3 +472,8 @@ def visualize_latent_by_category(trained_model, all_images, shape):
     g.fig.suptitle('Latent Dimension Distributions by Shape', y=1.02)
     plt.tight_layout()
     plt.show()
+
+########################################
+# Modifying the latent space and seeing how the reconstruction changes
+########################################
+
