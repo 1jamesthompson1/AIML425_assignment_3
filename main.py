@@ -112,7 +112,7 @@ inspect.vis_grid(generated_imgs)
 
 # %%
 reload(inspect)
-inspect.visualize_neighbors(vae_trained_model, 15, all_possible_images, k=8, max_dist=5, rng_key=key)
+inspect.visualize_neighbors(vae_trained_model, 15, all_possible_images, k=8, max_dist=50, rng_key=key, distance='euclidean')
 
 
 # %%
@@ -122,7 +122,7 @@ performance = inspect.nearest_neighbor_performance_evaluation(
     vae_trained_model, training_data=all_possible_images, num_samples=1000, rng_key=key
 )
 
-print(f"Nearest neighbor performance evaluation: {performance:.4f}")
+print(f"Average distance to the nearest neighbor: {performance:.4f}")
 
 coverage = inspect.coverage_estimation(vae_trained_model, all_possible_images, num_samples=10000, rng_key=key)
 print(f"Coverage estimate: {coverage*100:.1f}% of all possible images")

@@ -138,9 +138,26 @@ The size of the square determines it width/height, the size of the circle determ
 
 \subsubsection{setup}
 
+The VAE model is two fully connected neural networks. The encoder outputs 2 values (mean and variance) while the decoder outputs a single scalar. The loss function used was the ELBO loss function with a $\beta$ of 1 (using BCE for reconstruction error and KL divergence for regularization). A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. The fine tuning of parameters was done through trial and error using the loss curve and generative performance metrics as a guide.
 \subsubsection{generative performance}
 
+
+There are different ways of understanding the generative performance of the model. This situation we are involves a finite set of valid images (8002) in a very large space of images ($2^{784}$). Using this valid image set we can calculate three different metrics.
+Therefore we can use this valid image set to evaluate; how many of the valid images can the model generate (coverage), how close are the generated images to the nearest valid image (nearest neighbor performance) and how similar is the distribution of generated images to the distribution of valid images (KL divergence).
+
+\begin{align*}
+\text{coverage} &= \frac{|\{x \in \text{images} \mid \min_{\hat{x} \in \text{generated}} d(x, \hat{x}) < \text{thres}\}|}{|\text{images}|}\\
+\text{nearest neighbor} &= \frac{1}{|\text{images}|} \sum_{x_i \in \text{images}} \min_{\hat{x}_j \in \text{generated}} d(x_i, \hat{x}_j)\\
+\text{KLD} &= D_{KL}(p_{data} || p_{model})\\
+&\approx \sum_{x_i \in \text{images}} p_{data}(x_i) \log \frac{p_{data}(x_i)}{p_{model}(x_i)}\\
+&= \sum_{x_i \in \text{images}} \frac{1}{|images|} \log \frac{1}{q_{counts}(x_i)}\\
+\end{align*}
+Where $d(x_i, \hat{x}_j)$ is the distance between two images, and the $\text{thres}$ is a hyperparameter that determines how close the generated image needs to be to a valid image to count as "an attempt at generating it", and $q_{counts}(x_i)$ is the number of times the model has generated an image close enough to $x_i$ (within the threshold). I choose euclidean as the distance metric and the threshold of 3 by looking at sample images and aligning the cutoff and distance metric with my intuition.
+
+The results of the generative peformance can be found in \ref{tab:compare-vae-ae-gen}
+
 \subsection{Autoencoder}
+
 
 \subsubsection{setup}
 
@@ -171,6 +188,27 @@ I completed my work using the following tools:
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
+
+\appendix
+
+\section{Models}
+
+\begin{table}
+\caption{Hyperparameters used for training the VAE and AE models.}
+\label{tab:hyperparams}
+\centering
+\begin{tabular}{l|c|c}
+\toprule
+\textbf{Hyperparameter} & \textbf{VAE} & \textbf{AE} \\
+\midrule
+Latent dimension & 32 & 10 \\
+Encoder architecture & [2000, 2000, 2000] & [2000, 2000, 2000] \\
+Decoder architecture & [2000, 2000, 2000] & [2000, 2000, 2000] \\
+Optimizer & Adam(lr=0.001) & Adam(lr=0.001) \\
+Minibatch size & 256 & 512 \\
+Number of epochs & 200 & 200 \\
+\end{tabular}
+\end{table}
 
 
 \end{document}
