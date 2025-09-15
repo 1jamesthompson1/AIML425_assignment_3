@@ -4,7 +4,7 @@ import jax.random as random
 from flax import nnx
 from flax.training import train_state
 
-from optax import adam
+from optax import adam, sigmoid_binary_cross_entropy
 
 import matplotlib.pyplot as plt
 import time
@@ -37,24 +37,6 @@ def reconstruction_error(x, y):
     '''
     return jnp.mean(jnp.square(x - y))
 
-def binary_cross_entropy_with_logits(x_recon, x):
-    '''
-    BCE of x_recon (logits) and x (binary)
-
-    x_recon: (n_batch, n_features) logits
-    x: (n_batch, n_features) binary
-    
-    Assumes x is in {0, 1} and x_recon are logits (i.e. pre-sigmoid values).
-
-    returns: (n_batch,) BCE for each element in the batch
-    '''
-    logits = x_recon
-    
-    logits = nnx.log_sigmoid(logits)
-    return -jnp.sum(
-        x * logits + (1.0 - x) * jnp.log(-jnp.expm1(logits)+1e-8)
-    )
-
 def kl_divergence(mean, logvar):
     '''
     KL divergence between N(mean, var) and N(0, 1)
@@ -77,7 +59,8 @@ def vae_loss_fn(params, state, batch, rng, deterministic, kl_beta=1.0):
 
     counts = nnx.state(model, Count)
 
-    reconstruction_error_val = binary_cross_entropy_with_logits(x_recon, x).mean()
+    reconstruction_error_val = sigmoid_binary_cross_entropy(x_recon, x).sum()
+
     kl_divergence_val = kl_divergence(mean, logvar).mean()
 
     loss = reconstruction_error_val + kl_beta * kl_divergence_val

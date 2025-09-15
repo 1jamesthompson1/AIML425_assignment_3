@@ -38,6 +38,21 @@ layer, in bits (see equation (2) ).
 ▶ Compare the modified VAE and the standard VAE, based on suitable measures
 and settings
 
+# Setting up environment
+
+After git cloning simply run
+
+```bash
+uv sync
+```
+
+In project environment. Then the main.py can either be ran as a notebook or done from start to finish (in a few minutes on a GPU) with
+```bash
+uv run main.py
+```
+
+Some figures will be made and put in the `figures/` dir.
+
 ## Syncing of library
 
 My workflow involves working on my laptop for most tasks but access vscode on a remote machine (on VUW campus) which is more powerful to do my coding and report writing. Therefore I need to sync my Zotero .bib export from my laptop to this University machine. Therefore to do this I run this command:

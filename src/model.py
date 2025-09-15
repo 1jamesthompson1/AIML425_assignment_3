@@ -82,7 +82,7 @@ class Decoder(nnx.Module):
             if self.layer_norms[i] is not None:
                 z = self.layer_norms[i](z)
             z = nnx.relu(z)
-            if self.dropouts[i] is not None:
+            if self.dropouts[i] is not None and not deterministic:
                 z = self.dropouts[i](z, deterministic=deterministic)
 
         z = self.out(z)

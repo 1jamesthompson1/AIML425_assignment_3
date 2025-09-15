@@ -20,11 +20,21 @@
 \newcommand{\centerfigure}[2]{
     \begin{figure}[htbp]
         \centering
-        \caption{#2}
         \includegraphics[width=0.9\linewidth]{figures/#1.png}
+        \caption{#2}
         \label{fig:#1}
     \end{figure}
 }
+
+\newcommand{\centertable}[2]{
+    \begin{table}[htbp]
+        \centering
+        \caption{#2}
+        \input{figures/#1.tex}
+        \label{tab:#1}
+    \end{table}
+}
+
 \setlength{\abovedisplayskip}{1pt}
 \setlength{\belowdisplayskip}{0pt}
 \begin{document}
@@ -73,6 +83,7 @@ The input data $x$ goes through $f_{enc}$ to $z$ then through $f_{dec}$ to produ
 \begin{align}
 \mathcal{L}_{AE} &= \| x - \hat{x} \|^2\\
 \end{align}
+TODO: update the loss to include mention of the variance control / MMD.
 
 Training with this loss function means that the model will learn a compressed representation of the data. However there is no reason that the distribution of the latent space will be smooth or continuous (i.e that all squares will be near each other in the latent space). This means that the generative capabilities of the model will be limited. Only certain part of the latent space will correspond to valid images, without access to the encoder and training data we have no way of knowing which parts of the latent space are valid. This means that sampling the latent space to generate new images is likely to produce random noise rather than valid images.
 
@@ -139,7 +150,7 @@ The size of the square determines it width/height, the size of the circle determ
 
 \subsubsection{setup}
 
-The VAE model is two fully connected neural networks. The encoder outputs 2 values (mean and variance) while the decoder outputs a single scalar. The loss function used was the ELBO loss function with a $\beta$ of 1 (using BCE for reconstruction error and KL divergence for regularization). A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. The fine tuning of parameters was done through trial and error using the loss curve and generative performance metrics as a guide.
+The VAE model is two fully connected neural networks. The encoder outputs 2 values (mean and variance) while the decoder outputs a single scalar. The loss function used was the ELBO loss function with a $\beta$ of 0.65 (using BCE for reconstruction error and KL divergence for regularization). A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. The fine tuning of parameters was done through trial and error using the loss curve and generative performance metrics as a guide.
 
 \subsubsection{generative performance}
 
@@ -156,13 +167,13 @@ Therefore we can use this valid image set to evaluate; how many of the valid ima
 \end{align*}
 Where $d(x_i, \hat{x}_j)$ is the distance between two images, and the $\text{thres}$ is a hyperparameter that determines how close the generated image needs to be to a valid image to count as "an attempt at generating it", and $q_{counts}(x_i)$ is the number of times the model has generated an image close enough to $x_i$ (within the threshold). I choose euclidean as the distance metric and the threshold of 3 by looking at sample images and aligning the cutoff and distance metric with my intuition.
 
-The results of the generative peformance can be found in \ref{tab:compare-vae-ae-gen}
+The results of the generative peformance can be found in \ref{tab:ae-vs-vae}
 
 \subsection{Autoencoder}
 
 \subsubsection{setup}
 
-The Autoencoder model is a simpler version of the VAE model. The encoder and decoder are both just feedforward networks but unlike the VAE the encoder outputs a single vector rather than a distribution. The loss function used was just the mean squared error between the input and reconstruction input. Additionally a simple variance control was added that pushes the latent space to have unit variance. Lastly some gaussian noise was randomly added to the latent space. A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. Specifically compared to the VAE, the model was trained for longer, is twice the size and uses dropout.The fine tuning was done through trial and error using the loss curve and generative performance. Of key importance was pushing the network so that it could actually generate anythign resembling a valid image. To do this required both the noise in the latent space and dropout in the encoder.
+The Autoencoder model is a simpler version of the VAE model. The encoder and decoder are both just feedforward networks but unlike the VAE the encoder outputs a single vector rather than a distribution. The loss function used was just the mean squared error between the input and reconstruction input. Additionally a simple variance control was added that pushes the latent space to have unit variance. Lastly some gaussian noise was randomly added to the latent space. A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. Specifically compared to the VAE, the model was trained for longer, is twice the size and uses dropout.The fine tuning was done through trial and error using the loss curve and generative performance. Of key importance was pushing the network so that it could actually generate anything resembling a valid image. To do this required both the noise in the latent space and dropout in the encoder.
 
 \subsubsection{Information rate}
 
@@ -178,8 +189,15 @@ Looking at the results of varying dimension and reconstruction (changing one at 
 
 \subsection{Autoencoder vs Variational autoencoder}
 
+Using the metrics discussed above we can measure the generative performance of both models quantitatively. The comparison is somewhat fair because both models train for about a minute and I spent similar amount of time hyperparameter tuning both models.
+
+\centertable{ae-vs-vae}{Comparison of generative performance between the VAE and AE models. Both the generative performance and reonstruction performance are better for the VAE model.}
+
+TODO: Add in analysis of the table.
 
 \section{Conclusion}
+
+TODO: Add in conclusion.
 
 \newpage
 \section*{Statement}
@@ -213,13 +231,13 @@ I completed my work using the following tools:
 \textbf{Hyperparameter} & \textbf{VAE} & \textbf{AE} \\
 \midrule
 Latent dimension & 32 & 10 \\
-Encoder architecture & [1000, 1000, 1000] & [2000, 2000, 2000] \\
-Decoder architecture & [1000, 1000, 1000] & [2000, 2000, 2000] \\
+Encoder architecture & [1000, 1000, 1000, 500] & [2000, 2000, 2000] \\
+Decoder architecture & [500, 1000, 1000, 1000] & [2000, 2000, 2000] \\
 Optimizer & Adam(lr=0.001) & Adam(lr=0.001) \\
-Minibatch size & 256 & 512 \\
-Number of epochs & 200 & 200 \\
-Regularization weight & 1 & 1 \\
-Dropout & No & Yes (p=0.2) \\
+Minibatch size & 512 & 512 \\
+Number of epochs & 1000 & 200 \\
+Regularization weight & 0.65 & 1 \\
+Dropout & Yes (p=0.1) & Yes (p=0.2) \\
 Layer norm & No & No \\
 Latent space noise & No & Yes ($\sigma=0.2$) \\
 \bottomrule

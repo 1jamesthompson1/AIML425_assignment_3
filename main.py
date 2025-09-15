@@ -2,6 +2,8 @@
 # # AIML 425 - Assignment 3
 # ## Problem 2: Variational Auto Encoders and Auto Encoders
 
+# This notebook is provided for ease of use for marking. However it sohuld be noted that the development was conducted with the notebook as script percent format. The assignment repository can be found at [my gitea instance](https://gitea.james-server.duckdns.org/james/AIML425_assignment_3)
+
 # ## Global imports
 # Most of the interesting good stuff is in the src/ directory this file just runs the experiments and call the implementations.
 # %% Start up
@@ -63,6 +65,8 @@ valid_batches = partial(data.create_batches, all_possible_images[valid_indices])
 
 # valid_batches = partial(data.create_batches, data.generate_database(2000, key, dim=dim, size_bounds=size_bounds))
 
+# %%
+
 ################################################################################
 ################################################################################
 
@@ -82,19 +86,22 @@ vae_trained_model, vae_history = train.do_complete_experiment(
     train_batches,
     valid_batches,
     model_class=model.VAE,
-    loss_fn=train.vae_loss_fn,
+    loss_fn=partial(
+        train.vae_loss_fn,
+        kl_beta=0.65
+    ),
     learning_rate=0.001,
-    minibatch_size=256,
+    minibatch_size=512,
     latent_dim=32,
-    # encoder_arch=[2000, 2000, 2000],
-    # decoder_arch=[2000, 2000, 2000],
-    num_epochs=200,
-    eval_every=5,
-    # dropout=0.2,
+    encoder_arch=[1000, 1000, 1000, 500 ],
+    decoder_arch=[500, 1000, 1000, 1000],
+    num_epochs=1000,
+    eval_every=20,
+    dropout=0.1, 
 )
 
 inspect.plot_training_history(vae_history)
-
+inspect.final_performance_information(vae_trained_model, all_possible_images, key)
 # %% [markdown]
 # ## Understand the performance of the model
 
@@ -122,24 +129,8 @@ inspect.vis_grid(generated_imgs)
 
 # %%
 reload(inspect)
+# This is simply to help intuitively select the threshold for what counts as an attempt
 inspect.visualize_neighbors(vae_trained_model, 15, all_possible_images, k=8, max_dist=50, rng_key=key, distance='euclidean')
-
-
-# %%
-reload(inspect)
-
-performance = inspect.nearest_neighbor_performance_evaluation(
-    vae_trained_model, training_data=all_possible_images, num_samples=1000, rng_key=key
-)
-
-print(f"Average distance to the nearest neighbor: {performance:.4f}")
-
-coverage = inspect.coverage_estimation(vae_trained_model, all_possible_images, num_samples=10000, rng_key=key)
-print(f"Coverage estimate: {coverage*100:.1f}% of all possible images")
-
-d_kl_div = inspect.kl_divergence(all_possible_images, vae_trained_model, rng_key=key)
-
-print(f"D_kl(p_data || p_model) estimate: {d_kl_div:.4f} bits")
 
 
 ################################################################################
@@ -167,7 +158,7 @@ ae_trained_model, ae_history = train.do_complete_experiment(
     },
     loss_fn=partial(
         train.ae_loss_fn,
-        regularization_weight=4,
+        regularization_weight=1,
     ),
     learning_rate=0.001,
     minibatch_size=512,
@@ -180,6 +171,7 @@ ae_trained_model, ae_history = train.do_complete_experiment(
 )
 
 inspect.plot_training_history(ae_history)
+inspect.final_performance_information(ae_trained_model, all_possible_images, key)
 
 # %% [markdown]
 # ## Understand the performance of the model
@@ -207,16 +199,6 @@ generated_imgs = inspect.sample_and_generate(ae_trained_model, num_samples=9, rn
 
 
 inspect.vis_grid(generated_imgs)
-
-# %%
-reload(inspect)
-reload(data)
-
-performance = inspect.nearest_neighbor_performance_evaluation(
-    ae_trained_model, training_data=all_possible_images, num_samples=10000, rng_key=key
-)
-
-print(f"Nearest neighbor performance evaluation: {performance:.4f}")
 
 # %% Estimate information rate
 
@@ -259,3 +241,15 @@ inspect.latent_space_traversal_and_reconstruct(
     traversal_range=(-3, 3),
     steps=7,
     name="ae-traversal")
+
+# %% [markdown]
+
+# # Comparing the two models
+
+# To compare these two models I will simply run the final performane information function and put that in a table. It hives a good understanding of reocnsutrction error and some understanding of generative performaance.
+
+# %%
+reload(inspect)
+
+inspect.create_comparison_table(vae_trained_model, ae_trained_model, all_possible_images, key, "ae-vs-vae")
+    

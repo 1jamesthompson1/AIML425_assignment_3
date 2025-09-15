@@ -1,6 +1,7 @@
 # This code will be to generate some graphs as well as performance test the model.
 import matplotlib.pyplot as plt
 from jax import random, numpy as jnp
+import optax
 import pandas as pd
 import seaborn as sns
 import math
@@ -54,6 +55,8 @@ def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
     if rng_key is None:
         rng_key = random.PRNGKey(1)
     recon_x, *_ = trained_model(x, rng_key)
+    # DO sigmoid activation to make it look better
+    recon_x = 1/(1 + jnp.exp(-recon_x))
     fig, axes = plt.subplots(num_images, 2, figsize=(5, 2 * num_images))
     for i in range(num_images):
         axes[i, 0].imshow(x[i].reshape(28, 28), cmap='gray')
@@ -88,6 +91,23 @@ def visualize_latent_space(trained_model, batch):
     )
     plt.tight_layout()
     plt.show()
+
+def bce_error(trained_model, all_possible_images):
+    '''
+    Calculate the reconstruction error for all possible images.
+    '''
+    images = all_possible_images.reshape(all_possible_images.shape[0], -1)  # (N, 784)
+    batch_size = 100
+
+    errors = []
+
+    for i in range(0, images.shape[0], batch_size):
+        batch = images[i:i + batch_size]
+        recon_batch = trained_model(batch, z_rng=None, deterministic=True)[0]
+        batch_errors = optax.sigmoid_binary_cross_entropy(recon_batch, batch).sum()
+        errors.append(batch_errors)
+
+    return jnp.array(errors)
 
 def plot_training_history(history):
     '''
@@ -124,6 +144,66 @@ def plot_training_history(history):
 
 
     
+def final_performance_information(trained_model, all_possible_images, key):
+    '''
+    Simple summary statistics on the trained model.
+    
+    Used to compare various parameter settings
+    
+    Args:
+        trained_model: A trained model (VAE or AE)
+    Returns:
+        performance: Average distance to nearest neighbor in training set
+        coverage: Estimated coverage of the model
+        d_kl_div: Estimated KL divergence between data and model distribution
+        reconstruction_error: Average reconstruction error of the model
+    '''
+    
+    performance = nearest_neighbor_performance_evaluation(
+        trained_model, training_data=all_possible_images, num_samples=1000, rng_key=key
+    )
+
+    print(f"Average distance to the nearest neighbor: {performance:.4f}")
+
+    coverage = coverage_estimation(trained_model, all_possible_images, num_samples=10000, rng_key=key)
+    print(f"Coverage estimate: {coverage*100:.1f}% of all possible images")
+
+    d_kl_div = kl_divergence(all_possible_images, trained_model, rng_key=key)
+
+    print(f"D_kl(p_data || p_model) estimate: {d_kl_div:.4f} bits")
+
+    reconstruction_error = bce_error(trained_model, all_possible_images).mean()
+
+    print(f"Reconstruction error (BCE): {reconstruction_error:.4f} nats or {reconstruction_error/ jnp.log(2):.4f} bits")
+
+    return performance, coverage, d_kl_div, reconstruction_error
+
+def create_comparison_table(vae_model, ae_model, all_possible_images, key, name):
+    '''
+    Creates a table comparing the two models.
+    Each row is a metric and two columns for each of the models.
+
+    Args:
+        vae_model: The trained VAE model.
+        ae_model: The trained AE model.
+        name: The name of the file to save the latex table to.
+    '''
+    
+    vae_nn, vae_coverage, vae_dkl, vae_recon = final_performance_information(vae_model, all_possible_images, key)
+
+    ae_nn, ae_coverage, ae_dkl, ae_recon = final_performance_information(ae_model, all_possible_images, key)
+    
+    table = pd.DataFrame({
+        "Metric": ["Avg. Nearest Neighbor Distance", "Coverage (%)", "D_kl (bits)", "Reconstruction Error (bits)"],
+        "VAE": [f"{vae_nn:.4f}", f"{vae_coverage*100:.1f}%", f"{vae_dkl:.4f}", f"{vae_recon / jnp.log(2):.4f}"],
+        "AE": [f"{ae_nn:.4f}", f"{ae_coverage*100:.1f}%", f"{ae_dkl:.4f}", f"{ae_recon / jnp.log(2):.4f}"],
+    })
+
+    # Save the table to a LaTeX file
+    with open(f"{output_path}/{name}.tex", "w") as f:
+        f.write(table.to_latex(index=False, escape=True))
+
+    return table
 
 ################################################################################
 # 
