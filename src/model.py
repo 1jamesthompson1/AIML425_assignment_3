@@ -172,7 +172,7 @@ class AutoEncoder(nnx.Module):
     def __call__(self, x, z_rng, deterministic=False):
         mean = self.encoder(x, rngs=z_rng, deterministic=deterministic)
         if not deterministic and self.latent_noise_scale > 0.0:
-            noise = random.normal(z_rng) * self.latent_noise_scale
+            noise = random.normal(z_rng, mean.shape) * self.latent_noise_scale
             z = mean + noise
         else:
             z = mean

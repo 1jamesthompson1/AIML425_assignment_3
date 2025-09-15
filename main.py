@@ -1,25 +1,31 @@
+# %% [markdown]
+# # AIML 425 - Assignment 3
+# ## Problem 2: Variational Auto Encoders and Auto Encoders
+
+# ## Global imports
+# Most of the interesting good stuff is in the src/ directory this file just runs the experiments and call the implementations.
 # %% Start up
 from jax import random
 from jax import numpy as jnp
 from importlib import reload
-import utils
 from functools import partial
 
 from src import model, train, data, inspect
 
 key = random.key(42)
 
-reload(utils)
 reload(model)
 reload(train)
 reload(data)
 reload(inspect)
 
+################################################################################
+################################################################################
+
+# ------------ Data generation -----------------
 # %% [markdown]
-
+################################################################################
 # # Generate data
-
-# The data generated will be images of size 28x28 of shapes at different locations. A single shape per image. Assuming black and white so no anti-aliasing.
 
 # %%
 reload(data)
@@ -57,8 +63,12 @@ valid_batches = partial(data.create_batches, all_possible_images[valid_indices])
 
 # valid_batches = partial(data.create_batches, data.generate_database(2000, key, dim=dim, size_bounds=size_bounds))
 
-# %% [markdown]
+################################################################################
+################################################################################
 
+# ------------ VARIATIONAL AUTO ENCODER SECTION -----------------
+# %% [markdown]
+################################################################################
 # # Train a VAE model
 
 # %%
@@ -132,9 +142,16 @@ d_kl_div = inspect.kl_divergence(all_possible_images, vae_trained_model, rng_key
 print(f"D_kl(p_data || p_model) estimate: {d_kl_div:.4f} bits")
 
 
+################################################################################
+################################################################################
+
+# ------------ AUTO ENCODER SECTION -----------------
 # %% [markdown]
 # # Train an AutoEncoder model
+################################################################################
+################################################################################
 
+# %%
 reload(train)
 reload(data)
 reload(model)
@@ -148,7 +165,10 @@ ae_trained_model, ae_history = train.do_complete_experiment(
     model_kwargs={
         "latent_noise_scale": 0.2
     },
-    loss_fn=train.ae_loss_fn,
+    loss_fn=partial(
+        train.ae_loss_fn,
+        regularization_weight=4,
+    ),
     learning_rate=0.001,
     minibatch_size=512,
     latent_dim=10,
@@ -202,7 +222,7 @@ print(f"Nearest neighbor performance evaluation: {performance:.4f}")
 
 reload(inspect)
 
-info_rate = inspect.estimate_information_rate(ae_trained_model, next(train_batches(key=key, minibatch_size=1000)))
+info_rate = inspect.estimate_information_rate(ae_trained_model, all_possible_images)
 
 print(f"Estimated information rate: {info_rate:.4f} bits")
 print(f"Which allows for {2**info_rate:.1f} distinct numbers to be represented, which is {2**info_rate/len(all_possible_images):.1f} numbers per possible image")
@@ -211,11 +231,31 @@ print(f"Next power of two: {real_count} bits or {real_count // 8} bytes")
 
 
 # %% Explanation of what the latent space means for AE
+# ## Explaining the AE latent space
 
+# %%
+# Correlation to known features
 reload(inspect)
 
 correlation = inspect.latent_space_correlation(ae_trained_model, all_possible_images, parameters)
 
-inspect.visualize_latent_correlation(correlation, feature_names=["shape", "size", "x", "y"])
+inspect.visualize_latent_correlation(correlation, feature_names=["shape", "size", "x", "y"], name="ae-latent-corelation")
 
-inspect.visualize_latent_by_category(ae_trained_model, all_possible_images, parameters[:, 0])
+inspect.visualize_latent_by_category(ae_trained_model, all_possible_images, parameters[:, 0], name="ae-latent-by-shape")
+
+# %%
+# Varying latent dimensions and seeing the effect
+
+reload(inspect)
+
+inspect.zero_out_latent_and_reconstruct(
+    ae_trained_model,
+    all_possible_images[jnp.floor(jnp.linspace(0, len(all_possible_images)-1, 5)).astype(int)],
+    name="ae-zero-out")
+
+inspect.latent_space_traversal_and_reconstruct(
+    ae_trained_model,
+    all_possible_images[jnp.floor(jnp.linspace(0, len(all_possible_images)-1, 3)).astype(int)],
+    traversal_range=(-3, 3),
+    steps=7,
+    name="ae-traversal")

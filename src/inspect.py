@@ -5,6 +5,8 @@ import pandas as pd
 import seaborn as sns
 import math
 
+output_path = "./figures/"
+
 def sample_and_generate(trained_model, num_samples=5, rng_key=None):
     '''
     Samples from the prior and generates images using the trained model.
@@ -352,13 +354,6 @@ def kl_divergence(data, trained_model, rng_key=None):
     
 
 
-def estimate_information_rate(trained_model, batch, rng_key=None, num_bins=30):
-    x = batch["input"]
-    z = trained_model(x, z_rng=None, deterministic=True)[1]  # (N, z_dim)
-
-    information = 1/2 * jnp.sum(jnp.log2(1 + (jnp.var(z, axis=0) / trained_model.latent_noise_scale)), axis=0)
-
-    return information
     
 
 ################################################################################
@@ -370,9 +365,24 @@ def estimate_information_rate(trained_model, batch, rng_key=None, num_bins=30):
 
 # Ideas
 # Check for correlation between known features and latent dimensions
-# Change the latent dimensions and see how the reconsutrction changes
+# Change the latent dimensions and see how the reconstruction changes
 # Zero out latent dimensions and see how reconstruction changes similar to above.
 
+def estimate_information_rate(trained_model, images):
+    if images.ndim == 3:
+        x = images.reshape(images.shape[0], -1)  # (N, 784)
+    else:
+        x = images  # (N, 784)
+    # Batch process if too large
+    if x.shape[0] > 1000:
+        batches = jnp.array_split(x, math.ceil(x.shape[0] / 1000))
+        z = jnp.concatenate([trained_model(batch, z_rng=None, deterministic=True)[1] for batch in batches])
+    else:
+        z = trained_model(x, z_rng=None, deterministic=True)[1]  # (N, z_dim)
+
+    information = 1/2 * jnp.sum(jnp.log2(1 + (jnp.var(z, axis=0) / trained_model.latent_noise_scale)), axis=0)
+
+    return information
 
 ########################################
 # Latent space correlation with known features
@@ -409,7 +419,7 @@ def latent_space_correlation(trained_model, all_images, known_features):
     return cross_corr_matrix
 
 
-def visualize_latent_correlation(correlation_matrix, latent_dim_names=None, feature_names=None):
+def visualize_latent_correlation(correlation_matrix, latent_dim_names=None, feature_names=None, name=None):
     """
     Visualizes the correlation matrix between latent dimensions and known features using a heatmap.
 
@@ -430,9 +440,13 @@ def visualize_latent_correlation(correlation_matrix, latent_dim_names=None, feat
     plt.title('Correlation between Latent Dimensions and Known Features')
     plt.ylabel('Latent Dimensions')
     plt.xlabel('Known Features')
+
+    if name is not None:
+        plt.savefig(output_path + "/" + name + ".png")
+    
     plt.show()
 
-def visualize_latent_by_category(trained_model, all_images, shape):
+def visualize_latent_by_category(trained_model, all_images, shape, name=None):
     """
     Visualizes the distribution of each latent dimension, grouped by a categorical feature.
 
@@ -471,9 +485,142 @@ def visualize_latent_by_category(trained_model, all_images, shape):
     )
     g.fig.suptitle('Latent Dimension Distributions by Shape', y=1.02)
     plt.tight_layout()
+   
+    if name is not None:
+        plt.savefig(output_path + "/" + name + ".png") 
+    
     plt.show()
 
 ########################################
 # Modifying the latent space and seeing how the reconstruction changes
 ########################################
 
+def zero_out_latent_and_reconstruct(trained_model, input_images, name):
+    '''
+    Take the trained model and generate the latent for the input images.
+    For each latent dimension zero it out and reconstruct the input image.
+    Draws a plot with the original image, reconstruction on one row, then the 10 reconstructions below it. 
+    
+    Args:
+        trained_model: The trained autoencoder model.
+        input_images: A batch of input images to analyze. (N, 28, 28)
+
+    Return:
+        None
+    '''
+
+    if input_images.ndim == 3:
+        x = input_images.reshape(input_images.shape[0], -1)  # (N, 784)
+    else:
+        x = input_images  # (N, 784)
+        
+    num_images = min(x.shape[0], 5)  # Limit to 5 images for 10 rows (2 per image)
+    if x.shape[0] > 5:
+        print(f"WARNING: Only visualizing the first 5 images, but {x.shape[0]} were provided.")
+        x = x[:num_images]
+
+    recon_x, z = trained_model(x, z_rng=None, deterministic=True)  # (N, z_dim)
+    latent_dim = z.shape[1]
+    
+    fig = plt.figure(figsize=(20, 22))  # Increased height to accommodate extra space
+    # Adjust height_ratios to add more space (height) to the narrow rows where horizontal lines are (indices 1,3,5,7,9)
+    height_ratios = [2 if i % 2 == 0 else 4 for i in range(10)]  # Wide rows: 2, Narrow rows: 3
+    gs = plt.GridSpec(10, 10, figure=fig, width_ratios=[2]*10, height_ratios=height_ratios)
+    
+    for i in range(num_images):
+        wide_row = 2 * i
+        narrow_row = 2 * i + 1
+        
+        # Wide row: Original and Reconstruction (spanning 2 columns each)
+        ax_orig = fig.add_subplot(gs[wide_row, 0:5])
+        ax_orig.imshow(x[i].reshape(28, 28), cmap='gray')
+        ax_orig.set_title("Original")
+        ax_orig.axis('off')
+        
+        ax_recon = fig.add_subplot(gs[wide_row, 5:10])
+        ax_recon.imshow(recon_x[i].reshape(28, 28), cmap='gray')
+        ax_recon.set_title("Reconstruction")
+        ax_recon.axis('off')
+        
+        # Narrow row: Latent zeroed reconstructions (1 column each)
+        for j in range(latent_dim):
+            ax_latent = fig.add_subplot(gs[narrow_row, j])
+            z_modified = z[i].at[j].set(0.0)  # Zero out the j-th latent dimension
+            recon_modified = trained_model.decoder(z_modified[None, :], rngs=None, deterministic=True)[0]  # (1, 784)
+            ax_latent.imshow(recon_modified.reshape(28, 28), cmap='gray')
+            ax_latent.set_title(f"Latent {j+1} zeroed")
+            ax_latent.axis('off')
+
+    plt.tight_layout()
+    if name is not None:
+        plt.savefig(output_path + "/" + name + ".png")
+    plt.show()
+    
+    
+def latent_space_traversal_and_reconstruct(trained_model, input_images, traversal_range=(-3, 3), steps=7, name=None):
+    '''
+    Take the trained model and generate the latent for the input images.
+    For each latent dimension traverse it from traversal_range[0] to traversal_range[1] in steps steps and reconstruct the input image.
+    Draws a plot with the original image, reconstruction on one row, then the traversals below it. 
+    
+    Args:
+        trained_model: The trained autoencoder model.
+        input_images: A batch of input images to analyze. (N, 28, 28)
+        traversal_range: Tuple indicating the min and max values to traverse each latent dimension.
+        steps: Number of steps to take in the traversal.
+    Return:
+        None
+    '''
+    
+    if input_images.ndim == 3:
+        x = input_images.reshape(input_images.shape[0], -1)  # (N, 784)
+    else:
+        x = input_images  # (N, 784)
+        
+    if x.shape[0] > 3:
+        print(f"WARNING: Only visualizing the first 3 images, but {x.shape[0]} were provided.")
+        x = x[:3]  # Limit to first 3 images for visualization
+
+    recon_x, z = trained_model(x, z_rng=None, deterministic=True)  # (N, z_dim)
+    latent_dim = z.shape[1]
+
+    num_images = x.shape[0]
+    
+    traversal_values = jnp.linspace(traversal_range[0], traversal_range[1], steps)
+    for i in range(num_images):
+        fig = plt.figure(figsize=(20, 4 * (latent_dim + 1)))  # Width based on 10 columns * 2, height based on number of rows
+        gs = plt.GridSpec(latent_dim + 1, steps, figure=fig, width_ratios=[2]*steps, height_ratios=[2]*(latent_dim + 1))
+        
+    
+        # First row: Original and Reconstruction (spanning multiple columns)
+        ax_orig = fig.add_subplot(gs[0, 0:steps//2])
+        ax_orig.imshow(x[i].reshape(28, 28), cmap='gray')
+        ax_orig.set_title("Original")
+        ax_orig.axis('off')
+        
+        ax_recon = fig.add_subplot(gs[0, steps//2:steps])
+        ax_recon.imshow(recon_x[i].reshape(28, 28), cmap='gray')
+        ax_recon.set_title("Reconstruction")
+        ax_recon.axis('off')
+        
+        # Subsequent rows: Latent traversals
+        for j in range(latent_dim):
+            for k, val in enumerate(traversal_values):
+                ax_latent = fig.add_subplot(gs[j + 1, k])
+                z_modified = z[i].at[j].set(val)  # Set the j-th latent dimension to the traversal value
+                recon_modified = trained_model.decoder(z_modified[None, :], rngs=None, deterministic=True)[0]  # (1, 784)
+                ax_latent.imshow(recon_modified.reshape(28, 28), cmap='gray')
+                if k == 0:
+                    ax_latent.set_ylabel(f"Latent dim {j+1}", fontsize=12)
+                if j == 0:
+                    ax_latent.set_title(f"{val:.2f}")
+                ax_latent.set_xticks([])
+                ax_latent.set_yticks([])
+                for spine in ax_latent.spines.values():
+                    spine.set_visible(False)
+                
+        plt.tight_layout()
+        if name is not None:
+            plt.savefig(output_path + "/" + name + f"-{i}.png")
+            print(f"Saved figure to {output_path}/{name}-{i}.png")
+        plt.show()

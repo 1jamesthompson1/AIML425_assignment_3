@@ -84,7 +84,36 @@ def vae_loss_fn(params, state, batch, rng, deterministic, kl_beta=1.0):
 
     return loss, x_recon, counts, (reconstruction_error_val, kl_beta * kl_divergence_val)
 
-def ae_loss_fn(params, state, batch, rng, deterministic, regularization_weight=1.0):
+
+def compute_mmd(z, z_prior, sigmas):
+    """Compute the Maximum Mean Discrepancy (MMD) between two sets of samples.
+
+    Args:
+        z: Samples from the model's latent space, shape (n_samples, latent_dim).
+        z_prior: Samples from the prior distribution, shape (n_samples, latent_dim).
+        sigmas: List or array of bandwidths for the RBF kernel.
+
+    Returns:
+        MMD value (scalar).
+    """
+    def rbf_kernel(x, y, sigma):
+        x_norm = jnp.sum(x ** 2, axis=1).reshape(-1, 1)
+        y_norm = jnp.sum(y ** 2, axis=1).reshape(1, -1)
+        cross_term = jnp.dot(x, y.T)
+        dist = x_norm + y_norm - 2 * cross_term
+        return jnp.exp(-dist / (2 * sigma ** 2))
+
+    mmd = 0.0
+    for sigma in sigmas:
+        k_zz = rbf_kernel(z, z, sigma)
+        k_pp = rbf_kernel(z_prior, z_prior, sigma)
+        k_zp = rbf_kernel(z, z_prior, sigma)
+
+        mmd += jnp.mean(k_zz) + jnp.mean(k_pp) - 2 * jnp.mean(k_zp)
+
+    return mmd
+
+def ae_loss_fn(params, state, batch, rng, deterministic, regularization_weight=1.0, mmd_sigma=(0.5, 1.0, 2.0)):
 
     x = batch["input"]
     
@@ -93,11 +122,13 @@ def ae_loss_fn(params, state, batch, rng, deterministic, regularization_weight=1
 
     reconstruction_error_val = reconstruction_error(x, x_recon)
 
-    var_penalty = jnp.mean((jnp.var(z, axis=0) - 1) ** 2)
+    # Not using as just caused a two hump distribution
+    # var_penalty = jnp.mean((jnp.var(z, axis=0) - 1) ** 2)
+    mmd_penalty = compute_mmd(z, random.normal(rng, z.shape), mmd_sigma)
 
-    loss = reconstruction_error_val + regularization_weight * var_penalty
+    loss = reconstruction_error_val + regularization_weight * mmd_penalty
     counts = nnx.state(model, Count)
-    return loss, x_recon, counts, (reconstruction_error_val, regularization_weight * var_penalty)
+    return loss, x_recon, counts, (reconstruction_error_val, regularization_weight * mmd_penalty)
 
 
 def plot_progress(metrics_history):

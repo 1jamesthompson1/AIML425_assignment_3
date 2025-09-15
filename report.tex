@@ -116,6 +116,7 @@ When we compress data, we inevitably lose some information. The amount of inform
 
 \begin{align}
 R = \sum_i \frac{1}{2} \log_2 \left(1 + \frac{\sigma_{i,Z}^2}{\sigma_{i, \epsilon}^2}\right)
+\label{eq:info_rate}
 \end{align}
 
 Where $\sigma_{i,Z}^2$ is the variance of the $i$-th dimension of the latent space and $\sigma_{i, \epsilon}^2$ is the variance of the noise added to that dimension.
@@ -139,6 +140,7 @@ The size of the square determines it width/height, the size of the circle determ
 \subsubsection{setup}
 
 The VAE model is two fully connected neural networks. The encoder outputs 2 values (mean and variance) while the decoder outputs a single scalar. The loss function used was the ELBO loss function with a $\beta$ of 1 (using BCE for reconstruction error and KL divergence for regularization). A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. The fine tuning of parameters was done through trial and error using the loss curve and generative performance metrics as a guide.
+
 \subsubsection{generative performance}
 
 
@@ -158,12 +160,21 @@ The results of the generative peformance can be found in \ref{tab:compare-vae-ae
 
 \subsection{Autoencoder}
 
-
 \subsubsection{setup}
 
-\subsubsection{Inforamtion rate}
+The Autoencoder model is a simpler version of the VAE model. The encoder and decoder are both just feedforward networks but unlike the VAE the encoder outputs a single vector rather than a distribution. The loss function used was just the mean squared error between the input and reconstruction input. Additionally a simple variance control was added that pushes the latent space to have unit variance. Lastly some gaussian noise was randomly added to the latent space. A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. Specifically compared to the VAE, the model was trained for longer, is twice the size and uses dropout.The fine tuning was done through trial and error using the loss curve and generative performance. Of key importance was pushing the network so that it could actually generate anythign resembling a valid image. To do this required both the noise in the latent space and dropout in the encoder.
+
+\subsubsection{Information rate}
+
+The information rate of the latent space was calculated by getting the encoder outputs from all of the possible images. Then using equation \ref{eq:info_rate} to calculate the information rate. The estimated information was 12.9 bits. This means that the latent space could represent 7604 distinct images. This is quite close to the 8002 valid images and would fit into a half float. Which achieves a good compression of the data into the equivalent space of less than 2 bytes.
 
 \subsubsection{Information meaning}
+
+There are two methods that I will use to understand the latent space. The first is to check for correlation between known features (x position, y position, size, shape) and the latent dimensions. The second is to change the latent dimensions and see how the reconstruction changes. This can be done by either changing one dimension at a time or zeroing out one dimension at a time.
+
+The correlation between known features and latent dimensions show \ref{fig:ae-latent-corelation} that there is some  correlation between some latent dimensions. Particularly the size both have some correlations around 0.3, other latent have some trivial correlations ~0.1 but nothing strong. Furthermore looking at the distribution of latent dimensions grouped by shape \ref{fig:ae-latent-by-shape} shows that there is no strong correlation between shape and any latent dimension. This means that the model has not learned to dedicate a specific dimension to shape. This is more or less what we would expect. \footnote{As a small experiment I tested out training the AE with only 4d. This resulted in some higher correlations between known features and latent dimensions, but still no clean separation of the 4 features.}
+
+Looking at the results of varying dimension and reconstruction (changing one at a time or zeroing out) shows that each dimension can have a large effect. Most interestingly is however that similar shapes are not near each other in the latent. We can see this because the reconstructions when varying a dimension jump from one shape, size, location to another, maybe even ghosting two shapes as it fades over \ref{fig:ae-traversal-1}.
 
 \subsection{Autoencoder vs Variational autoencoder}
 
@@ -193,7 +204,7 @@ I completed my work using the following tools:
 
 \section{Models}
 
-\begin{table}
+\begin{table}[htbp]
 \caption{Hyperparameters used for training the VAE and AE models.}
 \label{tab:hyperparams}
 \centering
@@ -202,13 +213,25 @@ I completed my work using the following tools:
 \textbf{Hyperparameter} & \textbf{VAE} & \textbf{AE} \\
 \midrule
 Latent dimension & 32 & 10 \\
-Encoder architecture & [2000, 2000, 2000] & [2000, 2000, 2000] \\
-Decoder architecture & [2000, 2000, 2000] & [2000, 2000, 2000] \\
+Encoder architecture & [1000, 1000, 1000] & [2000, 2000, 2000] \\
+Decoder architecture & [1000, 1000, 1000] & [2000, 2000, 2000] \\
 Optimizer & Adam(lr=0.001) & Adam(lr=0.001) \\
 Minibatch size & 256 & 512 \\
 Number of epochs & 200 & 200 \\
+Regularization weight & 1 & 1 \\
+Dropout & No & Yes (p=0.2) \\
+Layer norm & No & No \\
+Latent space noise & No & Yes ($\sigma=0.2$) \\
+\bottomrule
 \end{tabular}
 \end{table}
 
+\section{Understanding latent space}
+
+\centerfigure{ae-latent-by-shape}{Distribution of latent dimensions grouped by shape for the AE model. No strong correlation between shape and any latent dimension is visible.}
+
+\centerfigure{ae-latent-corelation}{Correlation between known features and latent dimensions for the AE model. Some strong correlation is visible, particularly for y position.}
+
+\centerfigure{ae-traversal-1}{Latent space traversals for the AE model. Each row shows the effect of varying one latent dimension from -3 to 3 while keeping the others constant.}
 
 \end{document}
