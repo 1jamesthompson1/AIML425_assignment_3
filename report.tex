@@ -88,7 +88,7 @@ In a VAE \cite{kingmaAutoEncodingVariationalBayes2022}, the encoder does not pro
 
 \begin{align}
 q_\phi(z|x) &= \mathcal{N}(z; \mu(x),\text{diag}(\sigma^2(x)))\\
-\text{where } \mu(x), \sigma(x) &= f_{enc}(x; \phi) \text{ and }z &\sim q_\phi(z|x) \notag\\
+\text{where } \mu(x), \sigma(x) &= f_{enc}(x; \phi) \text{ and } z \sim q_\phi(z|x) \notag\\
 \hat{x} &= f_{dec}(z; \theta)
 \end{align}
 
@@ -139,47 +139,49 @@ The dataset used for training both models is a generated dataset of simple shape
     
 \subsubsection{setup}
 
-The VAE model is two fully connected neural networks. The encoder outputs 2 values (mean and variance) while the decoder outputs a single scalar. The loss function used was the ELBO loss function with a $\beta$ of 0.65. A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. The fine tuning of parameters was done through trial and error using the loss curve and generative performance metrics as a guide.
+The VAE model is two fully connected neural networks. The encoder outputs 2 values (mean and variance) while the decoder outputs a single scalar. The simplicity of the network was chosen due to the relatively simple images. The loss function used was the ELBO loss function with a $\beta$ of 0.65. A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. The fine tuning of parameters was done through trial and error using the loss curve and generative performance metrics as a guide.
 
 \subsubsection{generative performance}
 
-I use euclidean as the distance metric and the threshold of 3 in the generative metrics. I choose this by looking at sample images and aligning the cutoff and distance metric with my intuition. The results of the generative performance can be found in \ref{tab:ae-vs-vae}. The model is found to be able to generate about half of the input images and the nearest neighbor distance is about 2.3 pixels.
+I use euclidean as the distance metric and the threshold of 3 in the generative metrics. I choose this by looking at sample images and aligning the cutoff and distance metric with my intuition. The results of the generative performance can be found in \ref{tab:ae-vs-vae} along with example generations in figure \ref{fig:vae-generated}. The model is found to be able to generate just over half of the input images and the nearest neighbor distance is about 2.3 pixels.
 
 \subsection{Autoencoder}
 
 \subsubsection{setup}
-The autoencoder model is almost identical to the VAE model, except that the encoder outputs a single value and the loss function is the modified MSE loss function. A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. It took more fine-tuning to get any generative performance out of the model.
+The autoencoder was built off the same architecture as the VAE, except that the encoder outputs a single value and the loss function is the modified MSE loss function. A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. It took more fine-tuning to get any generative performance out of the model.
 
 \subsubsection{Information rate}
 
-TODO: Update this with final
-The information rate of the latent space was calculated by getting the encoder outputs from all of the possible images. Then using equation \ref{eq:info_rate} to calculate the information rate. The estimated information was 12.9 bits. This means it uses less information than a single half float value.
+The information rate of the latent space was calculated by getting the encoder outputs from all of the possible images. Then using equation \ref{eq:info_rate} to calculate the information rate. The estimated information was 15.7 bits. This means it uses just less information than a single half float value. It allows us to compress the data from 784 bits (28x28 image) to 15.7 bits which is a ratio of 50:1. There is about 14.2 bits of information required to encode the 4 parameters of the shapes (x, y, size, shape) so the model is using about 1.9 bits of extra information to encode the data.
 
 \subsubsection{Information meaning}
 
 There are two methods that I will use to understand the latent space. The first is to check for correlation between known features (x position, y position, size, shape) and the latent dimensions. The second is to change the latent dimensions and see how the reconstruction changes, I do by both zeroing out and conducting traversals.
 
-The correlation between known features and latent dimensions show \ref{fig:ae-latent-corelation} that there is some correlation between some latent dimensions. Particularly the size has some correlations around 0.3, other latent have some trivial correlations ~0.1 but nothing strong. Furthermore looking at the distribution of latent dimensions grouped by shape \ref{fig:ae-latent-by-shape} shows that there is no strong correlation between shape and any latent dimension. This means that the model has not learned to dedicate a specific dimension to shape. 
+Figure \ref{fig:ae-latent-corelation} shows that there is some correlation between some latent dimensions. Particularly the size has some correlations around 0.6, other latent have some weak correlations ~0.3 but nothing strong. Furthermore looking at the distribution of figure \ref{fig:ae-latent-by-shape} we can see that there is no strong correlation between shape and any latent dimension.
 
-Looking at the results of varying dimension and reconstruction shows that some dimensions have a large effect. Most interestingly is however that similar shapes are not near each other in the latent. We can see this because when varying a dimension the reconstructions jump from one shape, size, location to another, maybe even ghosting two shapes as it fades over \ref{fig:ae-traversal-1}.
+Looking at figure \ref{fig:ae-traversal-2} shows that some dimensions have a large effect. For example latent dimension 8 can be seen to reduce the size of the shape as it increase. We can see in most of the dimensions that if you move too far away from the mean (0) then the generations become meaningless, this shows how only a small part of the latent space is understood by the AE model.
 
 \subsection{Autoencoder vs Variational autoencoder}
 
 Using the metrics discussed above we can measure the generative performance of both models quantitatively.
 
-\centertable{ae-vs-vae}{Comparison of performance between the VAE and AE models. Both the generative performance and reonstruction performance are better for the VAE model.}
+\centertable{ae-vs-vae}{Comparison of performance between the VAE and AE models.}
 
-TODO: Add in analysis of the table.
+We can see in \ref{tab:ae-vs-vae} that the VAE model outperforms the AE models on almost all the metrics. It has noticeably lower average nearest neighbor and higher coverage. Both models however still fail to capture the full distribution of the data missing about 40\% of the valid images.
+
 
 \section{Conclusion}
 
-Both models were able to effectively compress the data, with the AE model having an information rate of 12.9 bits. The VAE model had better generative performance across all metrics. The AE model's latent space did not show strong correlation with known features, and similar shapes were not clustered together, indicating a lack of meaningful organization in the latent space.
+I trained two different models a VAE and an AE on a simple dataset of shapes. Both models were able to effectively compress the data. The VAE model had better generative performance. An investigation of the latent space of the AE model showed some latent dimensions have correlated effects to known features. I would expect that more complex models and hyperparameter search could yield better results.
 
 \newpage
 \section*{Statement}
 
 TODO: add colab link
 The code and report of the Assignment was solely completed by myself (Thompson James). The complete source code can be found here \url{https://gitea.james-server.duckdns.org/james/AIML425\_assignment\_3}, with a link to a colab notebook found here: \url{TODO: add colab link}. A complete run through of the notebook takes about 10 minutes on a GPU enabled machine.
+
+I have kept the appendix as concise as possible, however the code is setup to produce many more figures and tables that can be used to understand the models.
 
 I completed my work using the following tools:
 \begin{itemize}
@@ -207,19 +209,21 @@ I completed my work using the following tools:
 \textbf{Hyperparameter} & \textbf{VAE} & \textbf{AE} \\
 \midrule
 Latent dimension & 32 & 10 \\
-Encoder architecture & [1000, 1000, 1000, 500] & [2000, 2000, 2000] \\
-Decoder architecture & [500, 1000, 1000, 1000] & [2000, 2000, 2000] \\
+Encoder architecture & [1000, 1000, 1000, 500] & [1000, 1000, 500] \\
+Decoder architecture & [500, 1000, 1000, 1000] & [500, 1000, 1000] \\
 Optimizer & Adam(lr=0.001) & Adam(lr=0.001) \\
 Minibatch size & 512 & 64 \\
-Number of epochs & 1000 & 200 \\
+Number of epochs & 1000 & 500 \\
 Regularization weight & 0.65 & 0.1 \\
-Dropout & Yes (p=0.1) & Yes (p=0.2) \\
+Regularization parameters & NA &  sigma=$[0.5,1,3,5]$\\
+Dropout & Yes (p=0.1) & Yes (p=0.1) \\
 Layer norm & No & No \\
 Latent space noise & No & Yes ($\sigma=0.2$) \\
-Misc & NA & MMD regularization with sigma=$[0.5,1,3,5]$\\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\centerfigure{vae-generated}{Samples generated from the trained VAE model. The model is able to generate a variety of shapes, sizes, and positions.}
 
 \section{Understanding latent space}
 
@@ -227,6 +231,6 @@ Misc & NA & MMD regularization with sigma=$[0.5,1,3,5]$\\
 
 \centerfigure{ae-latent-corelation}{Correlation between known features and latent dimensions for the AE model. Some strong correlation is visible, particularly for y position.}
 
-\centerfigure{ae-traversal-1}{Latent space traversals for the AE model. Each row shows the effect of varying one latent dimension from -3 to 3 while keeping the others constant.}
+\centerfigure{ae-traversal-2}{Latent space traversals for the AE model. Each row shows the effect of varying one latent dimension from -3 to 3 while keeping the others constant.}
 
 \end{document}

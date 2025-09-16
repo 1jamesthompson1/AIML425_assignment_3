@@ -127,7 +127,7 @@ inspect.visualize_reconstruction(vae_trained_model, batch, rng_key=key, num_imag
 reload(inspect)
 generated_imgs = inspect.sample_and_generate(vae_trained_model, num_samples=9, rng_key=key)
 
-inspect.vis_grid(generated_imgs)
+inspect.vis_grid(generated_imgs, name='vae-generated')
 
 # %%
 reload(inspect)

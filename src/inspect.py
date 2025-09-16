@@ -28,7 +28,7 @@ def sample_and_generate(trained_model, num_samples=5, rng_key=None):
 # ---------- Simple visualization function to see the outputs ----------
 #
 ################################################################################
-def vis_grid(images, grid_shape=None):
+def vis_grid(images, grid_shape=None, name=None):
     num_images = len(images)
     if grid_shape is None:
         # Calculate grid shape to fit all images
@@ -48,6 +48,10 @@ def vis_grid(images, grid_shape=None):
             ax.grid(True, which='both')
         ax.axis('off')
     plt.tight_layout()
+
+    if name is not None:
+        plt.savefig(output_path + "/" + name + ".png")
+    
     plt.show()
 
 
@@ -193,7 +197,7 @@ def create_comparison_table(vae_model, ae_model, all_possible_images, key, name)
     ae_nn, ae_coverage, ae_dkl, ae_recon = final_performance_information(ae_model, all_possible_images, key)
     
     table = pd.DataFrame({
-        "Metric": ["Avg. Nearest Neighbor Distance", "Coverage (%)", "D_kl (bits)", "Reconstruction Error (bits)"],
+        "Metric": ["Avg. Nearest Neighbor Distance", "Coverage (%)", "D_kl (bits)", "BCE Error (bits)"],
         "VAE": [f"{vae_nn:.4f}", f"{vae_coverage*100:.1f}%", f"{vae_dkl:.4f}", f"{vae_recon / jnp.log(2):.4f}"],
         "AE": [f"{ae_nn:.4f}", f"{ae_coverage*100:.1f}%", f"{ae_dkl:.4f}", f"{ae_recon / jnp.log(2):.4f}"],
     })
