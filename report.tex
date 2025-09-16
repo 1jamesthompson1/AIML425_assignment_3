@@ -61,155 +61,131 @@
 \maketitle
 
 \section{Introduction}
-
-Autoencoders are a type of neural network uses for unsupervised learning of efficient latent space representations of data. An auto encoder consists of two main parts the encoder which compresses the input data into a lower dimensional space and the decoder which reconstructions the original data. Variational Autoencoder are improved Autoencoders that change the output of the encoder to be a distribution over the latent space rather than a fixed vector and uses a ELBO loss function. I will explore both the generative capabilities of regular Autoencoders and Variational Autoencoders as well as the meaning of the latent space and how much information is retained in the latent space. I will train both models on a generated dataset of shapes of different size and locations on a 28x28 canvas. Both models achieve good reconstruction of the input data, however only the VAE is able to generate reasonable new images by sampling the latent space.
+The report documents the implementation and results of Assignment 2 problem 2. I implement a Variational Autoencoder (VAE) and a basic Autoencoder (AE), compare their generative performance, and analyze the AE’s latent space information.
 
 \section{Theory}
 
-Autoencoder and their variations are a type of neural networks arhcitecture that are used for unsupervised learning of an efficient representation of the input data. Basic autoencoders use a encoder-decoder architecture to compress and then reconstruct the input data. Variational Autoencoders (VAEs) extend this architecture by introducing a probabilistic approach to the encoding process, allowing for the latent space to be a known distribution. This section provides a description of both model types as well as a discussion of the latent space.
+Autoencoders and their variations are a type of neural networks architecture that are used for unsupervised learning of an efficient representation of the input data. This section will introduce auto encoders, variational auto encoders as well as some concepts for understanding the latent space and generative performance.
 
-\subsection{Autoencoders}
+\subsection{Autoencoders (AE)}
 
-TODO: add mathematical/probablistic description of model
-
-An Auto encoder has three important parts the encoder $f_{enc}$, the decoder $f_{dec}$ and the latent layer $z$. The latent layer is typically of a much lower dimension (2D-32D) than the input data. The encoder and decoder are typically implemented as neural networks with learnable parameters $\phi$ and $\theta$. Furthermore the encoder and decoder are generally the inverse of each other.
+An Autoencoder \cite{hintonReducingDimensionalityData2006} has three important parts the encoder $f_{enc}$, the decoder $f_{dec}$ and the latent layer $z$ (typically with lower dimension than input). The encoder and decoder are neural networks with learnable parameters $\phi$ and $\theta$.
 
 \begin{align}
-z &= f_{enc}(x; \phi)\\
-\hat{x} &= f_{dec}(z; \theta)
+z &= f_{enc}(x; \phi) \quad \hat{x} = f_{dec}(z; \theta)
 \end{align}
-The input data $x$ goes through $f_{enc}$ to $z$ then through $f_{dec}$ to produce the reconstruction $\hat{x}$. This model is then trained based on the reconstruction loss between the input and output data.
+The weights are trained based on the reconstruction loss between the input and output data.
 
 \begin{align}
-\mathcal{L}_{AE} &= \| x - \hat{x} \|^2\\
+\mathcal{L}_{AE} &= \| x - \hat{x} \|^2 + \beta MMD(z, \mathcal{N}(0, I))
 \end{align}
-TODO: update the loss to include mention of the variance control / MMD.
 
-Training with this loss function means that the model will learn a compressed representation of the data. However there is no reason that the distribution of the latent space will be smooth or continuous (i.e that all squares will be near each other in the latent space). This means that the generative capabilities of the model will be limited. Only certain part of the latent space will correspond to valid images, without access to the encoder and training data we have no way of knowing which parts of the latent space are valid. This means that sampling the latent space to generate new images is likely to produce random noise rather than valid images.
+Training with the with $\beta=0$ means that the model will learn a compressed representation of the data. However there is no reason that the distribution of the latent space will be smooth or continuous (i.e that all squares will be near each other in the latent space). This means that the generative capabilities of the model will be limited. Only certain part of the latent space will correspond to valid images. To fix this we can add a regularizer like Maximum Mean discrepancy \cite{grettonKernelMethodTwoSample2008} that will push the latent space to Gaussian distributions, this is what the second loss function is.
 
-\subsection{Variational Autoencoders}
+\subsection{Variational Autoencoders (VAE)}
 
-Variational Autoencoders (VAEs) are a type of generative model that builds upon the architecture of traditional autoencoders by introducing a probabilistic approach to the encoding process. In a VAE, the encoder does not produce a single point in the latent space but rather a distribution over the latent space, typically modeled as a Gaussian distribution. The goal is to learn the parameters of the generative model $p_{\theta}(x|z)$ which would allow us to generate new data points by sampling from the latent space.
+In a VAE \cite{kingmaAutoEncodingVariationalBayes2022}, the encoder does not produce a single point in the latent space but rather parameters for a Gaussian distribution. The goal is to learn the generative model $p_\theta(x)$, which we do by learning $p_\theta(x|z)$ where $z$ is from a known distribution. To do this we also  $q_\phi(z|x)$ that gives us the latent distribution given the input.
 
 \begin{align}
-q(z|x) &= \mathcal{N}(z; \mu(x),\text{diag}(\sigma^2(x)))\\
-\mu(x), \sigma(x) &= f_{enc}(x; \phi) \text{ where } \mu \text{ is mean and } \sigma \text{ is variance} \notag \\
-z &\sim q(z|x)\\
+q_\phi(z|x) &= \mathcal{N}(z; \mu(x),\text{diag}(\sigma^2(x)))\\
+\text{where } \mu(x), \sigma(x) &= f_{enc}(x; \phi) \text{ and }z &\sim q_\phi(z|x) \notag\\
 \hat{x} &= f_{dec}(z; \theta)
 \end{align}
 
-This changes the latent space so that it comes from a normal distribution. Therefore the latent space is continuous, smooth and has a known distribution. The latent space will now be valid everywhere in the space, meaning that we can sample from the latent space to generate new images.
-
-Furthermore, VAEs are trained using a loss function that combines the reconstruction loss (similar to traditional autoencoders) with a regularization term that encourages the learned latent distributions to be close to a prior distribution (typically a standard normal distribution). This regularization is achieved using the Kullback-Leibler (KL) divergence, which measures the difference between the learned distribution and the prior distribution. The overall loss function for a VAE can be expressed as:
+Like with traditional autoencoders, VAEs are trained to minimize a loss function that consists of two main components: the reconstruction loss and the regularization loss. The reconstruction error can be measured with Binary Cross Entropy and regularization with the Kullback-Leibler (KL) \cite{kullbackInformationSufficiency1951} divergence between the learned latent distribution and a prior distribution.
 
 \begin{align}
 \mathcal{L}_{VAE} &= \mathcal{L}_{reconstruction} + \beta \mathcal{L}_{KL}\\
-\text{Using}&\text{ MSE for reconstruction loss and Gaussian prior:} \notag\\
-&= \mathbb{E}_{x \sim p_{data}(x)}\left[\log p_{\theta}(x|z)\right] - \beta D(q(z|x)||p(z)) \notag\\
-&= \| x - \hat{x} \|^2 + \beta \frac{1}{2} \sum_{i=1}^{d} \left( \mu_i^2 + \sigma_i^2 - \log(\sigma_i^2) - 1 \right)
+\text{Using}&\text{ BCE for reconstruction loss and Gaussian prior:} \notag\\
+&= -\sum_{i=1}^{d} \left[ x_i \log(1+\exp(-\hat{x}_i)) + (1 - x_i)  \log(1+\exp(\hat{x}_i)) \right]\notag \\ &+ \beta \frac{1}{2} \sum_{i=1}^{d} \left( \mu_i^2 + \sigma_i^2 - \log(\sigma_i^2) - 1 \right)
 \end{align}
-
-This loss function is derived using the Jensen's inequality to maximize the evidence lower bound (ELBO) of the data likelihood, which will also maximize the likelihood of $\theta$. The reconstruction loss ensures that the decoded outputs are similar to the inputs, while the KL divergence term regularizes the latent space to follow the prior distribution. The hyperparameter $\beta$ controls the trade-off between these two objectives.
-
-For back propagation through the stochastic sampling process, VAEs employ the reparameterization trick. This involves expressing the latent variable $z$ as a deterministic function of the encoder outputs and a random noise variable $\epsilon$ sampled from a standard normal distribution:
-\begin{align}
-z = \mu + \sigma \cdot \epsilon, \quad \epsilon \sim \mathcal{N}(0, I)
-\end{align}
-
-Where $\epsilon$ is sampled for the minibatch and assumed to be constant for the back-propagation step. This allows gradients to be computed with respect to the encoder parameters, enabling effective training of the VAE using standard backpropagation techniques.
-
+\noindent Where $d$ is the dimensionality of the input data and $\beta$ is a hyperparameter. This loss function is derived using the Jensen's inequality to maximize the log likelihood of $p_\theta(x)$ \cite{kingmaAutoEncodingVariationalBayes2022}. To allow back propagation through the stochastic sampling process, VAEs employ the reparameterization trick.
 
 \subsection{Latent space information}
 
 \subsubsection{Information rate}
-
-When we compress data, we inevitably lose some information. The amount of information retained in the compressed representation can be quantified using the concept of information rate. Assuming that we add noise to the latent space, $z = y + \epsilon$ where $\epsilon \sim \mathcal{N}(0, \sigma^2)$, the information rate can be calculated as:
+Information rate is the amount of information that can pass through the latent layer. Assuming that we add noise to the latent space, $z = y + \epsilon$ where $\epsilon \sim \mathcal{N}(0, \sigma^2)$, the information rate can be calculated as:
 
 \begin{align}
 R = \sum_i \frac{1}{2} \log_2 \left(1 + \frac{\sigma_{i,Z}^2}{\sigma_{i, \epsilon}^2}\right)
 \label{eq:info_rate}
 \end{align}
 
-Where $\sigma_{i,Z}^2$ is the variance of the $i$-th dimension of the latent space and $\sigma_{i, \epsilon}^2$ is the variance of the noise added to that dimension.
-
-This means that for a given noise level, we can estimate the amount of information that can be retained in the latent space by sampling the encoder outputs and measuring the variance of each dimension.
+\noindent Where $\sigma_{i,Z}^2$ is the variance of the $i$-th dimension of the latent space and $\sigma_{i, \epsilon}^2$ is the variance of the noise added to that dimension.
 
 \subsubsection{Information meaning}
 
-The information that the latent space retain can be interpreted in multiple ways. One way is that each dimension of the latent space could represent a specific feature of the input data. For example in my data generation process I generate each shape with only 4 numbers (x position, y position, size, shape). Therefore one could imagine a 4D latent space that perfectly encodes these 4 features. In practice this is unlikely to happen, but we can still interpret the latent space as a compressed representation of the input data.
+The information that the latent space retains can be interpreted in multiple ways. One way is that each dimension of the latent space could represent a specific feature of the input data. We can test for this using correlation between known features and latent dimensions. Or we could test it by varying individual dimension and seeing how the reconstruction changes. In practice each dimension is unlikely to represent a single feature, but rather a combination of features.
+
+
+\subsection{Generative performance}
+To understand the generative performance of the models we can use the set of valid images to compare against. This allows us to ask the question; how many of the valid images can the model generate (coverage), how close are the generated images to the nearest valid image (nearest neighbor performance) and how similar is the distribution of generated images to the distribution of valid images (KL divergence). These metrics are defined as follows:
+
+\begin{align*}
+\text{coverage} &= \frac{|\{x \in \text{images} \mid \min_{\hat{x} \in \text{generated}} d(x, \hat{x}) < \text{thres}\}|}{|\text{images}|}\\
+\text{nearest neighbor} &= \frac{1}{|\text{images}|} \sum_{x_i \in \text{images}} \min_{\hat{x}_j \in \text{generated}} d(x_i, \hat{x}_j)\\
+\text{KL divergence} &\approx \sum_{x_i \in \text{images}} p_{data}(x_i) \log \frac{p_{data}(x_i)}{p_{model}(x_i)}\\
+&= \sum_{x_i \in \text{images}} \frac{1}{|images|} \log \frac{1}{q_{counts}(x_i)}\\
+\end{align*}
+\noindent Where $d(x_i, \hat{x}_j)$ is the distance between two images, and the $\text{thres}$ is a hyperparameter, and $q_{counts}(x_i)$ is the number of times the model has generated an image close enough to $x_i$ (within the threshold).
 
 \section{Experiments}
 
 \subsection{Dataset}
 
-The dataset used for training both models is a generated dataset of simple shapes (circles, squares, triangles) on a 28x28 canvas. Each shape is generated with random size and position. The shape may go up to the bounds but will never go out it and be clipped. There are 8 sizes ($[7,14]$) which means that there are a total 8002 unique images. The bounds of sizes were determined by how small the circles still look circle (lower bound) and no taking up more than half of the canvas (upper bound). The dataset used for training is 90\% of the total possible images, and the test set is the remaining 10\%. Holding a validation allows me to test the models ability to reconstruct unseen images, and so not just memorize the training data.
-
-The size of the square determines it width/height, the size of the circle determines its diameter and the size of the triangle determines the heigh (but the size is modified to be a bit shorter to make it fit with the other image sizes). The shapes are drawn in white on a black background. The triangle is an upright isosceles triangle.
+The dataset used for training both models is a generated dataset of simple shapes (circles, squares, triangles) on a 28x28 canvas. There are 8 sizes($[7,14]$) which means that there are a total 8002 unique images. The images are white on black. I used 90\% for training and 10\% for validation.
 
 \subsection{Variational autoencoder}
-
+    
 \subsubsection{setup}
 
-The VAE model is two fully connected neural networks. The encoder outputs 2 values (mean and variance) while the decoder outputs a single scalar. The loss function used was the ELBO loss function with a $\beta$ of 0.65 (using BCE for reconstruction error and KL divergence for regularization). A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. The fine tuning of parameters was done through trial and error using the loss curve and generative performance metrics as a guide.
+The VAE model is two fully connected neural networks. The encoder outputs 2 values (mean and variance) while the decoder outputs a single scalar. The loss function used was the ELBO loss function with a $\beta$ of 0.65. A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. The fine tuning of parameters was done through trial and error using the loss curve and generative performance metrics as a guide.
 
 \subsubsection{generative performance}
 
-
-There are different ways of understanding the generative performance of the model. This situation we are involves a finite set of valid images (8002) in a very large space of images ($2^{784}$). Using this valid image set we can calculate three different metrics.
-Therefore we can use this valid image set to evaluate; how many of the valid images can the model generate (coverage), how close are the generated images to the nearest valid image (nearest neighbor performance) and how similar is the distribution of generated images to the distribution of valid images (KL divergence).
-
-\begin{align*}
-\text{coverage} &= \frac{|\{x \in \text{images} \mid \min_{\hat{x} \in \text{generated}} d(x, \hat{x}) < \text{thres}\}|}{|\text{images}|}\\
-\text{nearest neighbor} &= \frac{1}{|\text{images}|} \sum_{x_i \in \text{images}} \min_{\hat{x}_j \in \text{generated}} d(x_i, \hat{x}_j)\\
-\text{KLD} &= D_{KL}(p_{data} || p_{model})\\
-&\approx \sum_{x_i \in \text{images}} p_{data}(x_i) \log \frac{p_{data}(x_i)}{p_{model}(x_i)}\\
-&= \sum_{x_i \in \text{images}} \frac{1}{|images|} \log \frac{1}{q_{counts}(x_i)}\\
-\end{align*}
-Where $d(x_i, \hat{x}_j)$ is the distance between two images, and the $\text{thres}$ is a hyperparameter that determines how close the generated image needs to be to a valid image to count as "an attempt at generating it", and $q_{counts}(x_i)$ is the number of times the model has generated an image close enough to $x_i$ (within the threshold). I choose euclidean as the distance metric and the threshold of 3 by looking at sample images and aligning the cutoff and distance metric with my intuition.
-
-The results of the generative peformance can be found in \ref{tab:ae-vs-vae}
+I use euclidean as the distance metric and the threshold of 3 in the generative metrics. I choose this by looking at sample images and aligning the cutoff and distance metric with my intuition. The results of the generative performance can be found in \ref{tab:ae-vs-vae}. The model is found to be able to generate about half of the input images and the nearest neighbor distance is about 2.3 pixels.
 
 \subsection{Autoencoder}
 
 \subsubsection{setup}
-
-The Autoencoder model is a simpler version of the VAE model. The encoder and decoder are both just feedforward networks but unlike the VAE the encoder outputs a single vector rather than a distribution. The loss function used was just the mean squared error between the input and reconstruction input. Additionally a simple variance control was added that pushes the latent space to have unit variance. Lastly some gaussian noise was randomly added to the latent space. A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. Specifically compared to the VAE, the model was trained for longer, is twice the size and uses dropout.The fine tuning was done through trial and error using the loss curve and generative performance. Of key importance was pushing the network so that it could actually generate anything resembling a valid image. To do this required both the noise in the latent space and dropout in the encoder.
+The autoencoder model is almost identical to the VAE model, except that the encoder outputs a single value and the loss function is the modified MSE loss function. A complete list of hyperparameters is shown in table \ref{tab:hyperparams}. It took more fine-tuning to get any generative performance out of the model.
 
 \subsubsection{Information rate}
 
-The information rate of the latent space was calculated by getting the encoder outputs from all of the possible images. Then using equation \ref{eq:info_rate} to calculate the information rate. The estimated information was 12.9 bits. This means that the latent space could represent 7604 distinct images. This is quite close to the 8002 valid images and would fit into a half float. Which achieves a good compression of the data into the equivalent space of less than 2 bytes.
+TODO: Update this with final
+The information rate of the latent space was calculated by getting the encoder outputs from all of the possible images. Then using equation \ref{eq:info_rate} to calculate the information rate. The estimated information was 12.9 bits. This means it uses less information than a single half float value.
 
 \subsubsection{Information meaning}
 
-There are two methods that I will use to understand the latent space. The first is to check for correlation between known features (x position, y position, size, shape) and the latent dimensions. The second is to change the latent dimensions and see how the reconstruction changes. This can be done by either changing one dimension at a time or zeroing out one dimension at a time.
+There are two methods that I will use to understand the latent space. The first is to check for correlation between known features (x position, y position, size, shape) and the latent dimensions. The second is to change the latent dimensions and see how the reconstruction changes, I do by both zeroing out and conducting traversals.
 
-The correlation between known features and latent dimensions show \ref{fig:ae-latent-corelation} that there is some  correlation between some latent dimensions. Particularly the size both have some correlations around 0.3, other latent have some trivial correlations ~0.1 but nothing strong. Furthermore looking at the distribution of latent dimensions grouped by shape \ref{fig:ae-latent-by-shape} shows that there is no strong correlation between shape and any latent dimension. This means that the model has not learned to dedicate a specific dimension to shape. This is more or less what we would expect. \footnote{As a small experiment I tested out training the AE with only 4d. This resulted in some higher correlations between known features and latent dimensions, but still no clean separation of the 4 features.}
+The correlation between known features and latent dimensions show \ref{fig:ae-latent-corelation} that there is some correlation between some latent dimensions. Particularly the size has some correlations around 0.3, other latent have some trivial correlations ~0.1 but nothing strong. Furthermore looking at the distribution of latent dimensions grouped by shape \ref{fig:ae-latent-by-shape} shows that there is no strong correlation between shape and any latent dimension. This means that the model has not learned to dedicate a specific dimension to shape. 
 
-Looking at the results of varying dimension and reconstruction (changing one at a time or zeroing out) shows that each dimension can have a large effect. Most interestingly is however that similar shapes are not near each other in the latent. We can see this because the reconstructions when varying a dimension jump from one shape, size, location to another, maybe even ghosting two shapes as it fades over \ref{fig:ae-traversal-1}.
+Looking at the results of varying dimension and reconstruction shows that some dimensions have a large effect. Most interestingly is however that similar shapes are not near each other in the latent. We can see this because when varying a dimension the reconstructions jump from one shape, size, location to another, maybe even ghosting two shapes as it fades over \ref{fig:ae-traversal-1}.
 
 \subsection{Autoencoder vs Variational autoencoder}
 
-Using the metrics discussed above we can measure the generative performance of both models quantitatively. The comparison is somewhat fair because both models train for about a minute and I spent similar amount of time hyperparameter tuning both models.
+Using the metrics discussed above we can measure the generative performance of both models quantitatively.
 
-\centertable{ae-vs-vae}{Comparison of generative performance between the VAE and AE models. Both the generative performance and reonstruction performance are better for the VAE model.}
+\centertable{ae-vs-vae}{Comparison of performance between the VAE and AE models. Both the generative performance and reonstruction performance are better for the VAE model.}
 
 TODO: Add in analysis of the table.
 
 \section{Conclusion}
 
-TODO: Add in conclusion.
+Both models were able to effectively compress the data, with the AE model having an information rate of 12.9 bits. The VAE model had better generative performance across all metrics. The AE model's latent space did not show strong correlation with known features, and similar shapes were not clustered together, indicating a lack of meaningful organization in the latent space.
 
 \newpage
 \section*{Statement}
 
 TODO: add colab link
-The code and report of the Assignment was solely completed by myself (Thompson James). The complete source code can be found here \url{https://gitea.james-server.duckdns.org/james/AIML425\_assignment\_3}, with a link to a colab notebook found here: \url{TODO: add colab link}. A complete run through of the notebook takes about an hour to complete on a university lab machine.
+The code and report of the Assignment was solely completed by myself (Thompson James). The complete source code can be found here \url{https://gitea.james-server.duckdns.org/james/AIML425\_assignment\_3}, with a link to a colab notebook found here: \url{TODO: add colab link}. A complete run through of the notebook takes about 10 minutes on a GPU enabled machine.
 
 I completed my work using the following tools:
 \begin{itemize}
     \item \textbf{Jupyter Notebook \cite{Kluyver2016jupyter} and JupyterText \cite{woutsMwoutsJupytext2025}:} For interactive development and hosting.
     \item \textbf{\LaTeX}: For writing the report.
-    \item \textbf{VSCode \cite{MicrosoftVscode2025}:} As IDE.
+    \item \textbf{VSCode \cite{MicrosoftVscode2025}:} As IDE, with Copilot to help with plotting and debugging.
     \item \textbf{JAX \cite{jax2018github} and Flax \cite{flax2020github}:} For implementing the neural network and training logic.
     \item \textbf{Matplotlib\cite{Hunter:2007} and Pandas\cite{thepandasdevelopmentteamPandasdevPandasPandas}:} For data visualization and management.
 \end{itemize}
@@ -234,12 +210,13 @@ Latent dimension & 32 & 10 \\
 Encoder architecture & [1000, 1000, 1000, 500] & [2000, 2000, 2000] \\
 Decoder architecture & [500, 1000, 1000, 1000] & [2000, 2000, 2000] \\
 Optimizer & Adam(lr=0.001) & Adam(lr=0.001) \\
-Minibatch size & 512 & 512 \\
+Minibatch size & 512 & 64 \\
 Number of epochs & 1000 & 200 \\
-Regularization weight & 0.65 & 1 \\
+Regularization weight & 0.65 & 0.1 \\
 Dropout & Yes (p=0.1) & Yes (p=0.2) \\
 Layer norm & No & No \\
 Latent space noise & No & Yes ($\sigma=0.2$) \\
+Misc & NA & MMD regularization with sigma=$[0.5,1,3,5]$\\
 \bottomrule
 \end{tabular}
 \end{table}
