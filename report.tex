@@ -133,7 +133,7 @@ To understand the generative performance of the models we can use the set of val
 
 \subsection{Dataset}
 
-The dataset used for training both models is a generated dataset of simple shapes (circles, squares, triangles) on a 28x28 canvas. There are 8 sizes($[7,14]$) which means that there are a total 8002 unique images. The images are white on black. I used 90\% for training and 10\% for validation.
+The dataset used for training both models is a generated dataset of simple shapes (circles, squares, triangles) on a 28x28 canvas. There are 8 sizes($[7,14]$) which means that there are a total 8002 unique images. The images are white on black. I used 90\% for training and 10\% for validation. The validation set is simply used to check for overfitting, all other metrics use the full set of images.
 
 \subsection{Variational autoencoder}
     
@@ -143,7 +143,7 @@ The VAE model is two fully connected neural networks. The encoder outputs 2 valu
 
 \subsubsection{generative performance}
 
-I use euclidean as the distance metric and the threshold of 3 in the generative metrics. I choose this by looking at sample images and aligning the cutoff and distance metric with my intuition. The results of the generative performance can be found in \ref{tab:ae-vs-vae} along with example generations in figure \ref{fig:vae-generated}. The model is found to be able to generate just over half of the input images and the nearest neighbor distance is about 2.3 pixels.
+I use euclidean as the distance metric and the threshold of 3 in the generative metrics. I choose this by looking at sample images and aligning the cutoff and distance metric with my intuition. The results of the generative performance can be found in \ref{tab:ae-vs-vae} along with example generations in figure \ref{fig:vae-generated}. The model is found to be able to generate just over half of the input images and the nearest neighbor distance is about 2.4 pixels.
 
 \subsection{Autoencoder}
 
@@ -152,7 +152,7 @@ The autoencoder was built off the same architecture as the VAE, except that the 
 
 \subsubsection{Information rate}
 
-The information rate of the latent space was calculated by getting the encoder outputs from all of the possible images. Then using equation \ref{eq:info_rate} to calculate the information rate. The estimated information was 15.7 bits. This means it uses just less information than a single half float value. It allows us to compress the data from 784 bits (28x28 image) to 15.7 bits which is a ratio of 50:1. There is about 14.2 bits of information required to encode the 4 parameters of the shapes (x, y, size, shape) so the model is using about 1.9 bits of extra information to encode the data.
+The information rate of the latent space was calculated by getting the encoder outputs from all of the possible images. Then using equation \ref{eq:info_rate} to calculate the information rate. The estimated information was 15.7 bits. This means it uses just less information than a single half float value. About 14.2 bits of information are required to encode the 4 parameters of the shapes (x, y, size, shape) so the model is using about 1.9 bits of extra information to encode the data.
 
 \subsubsection{Information meaning}
 
@@ -180,7 +180,7 @@ I trained two different models a VAE and an AE on a simple dataset of shapes. Bo
 
 The code and report of the Assignment was solely completed by myself (Thompson James). The complete source code can be found here \url{https://gitea.james-server.duckdns.org/james/AIML425\_assignment\_3}, with a link to a colab notebook found here: \url{https://colab.research.google.com/github/1jamesthompson1/AIML425_assignment_3/blob/main/main.ipynb}. A complete run through of the notebook takes about 10 minutes on a GPU enabled machine.
 
-I have kept the appendix as concise as possible, however the code is setup to produce many more figures and tables that can be used to understand the models.
+I have kept the appendix as concise as possible, however the code is setup to produce many more figures and tables that can be used to understand the models. Most of these figures have been generated and stored in the `figures` folder.
 
 I completed my work using the following tools:
 \begin{itemize}

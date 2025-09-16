@@ -55,7 +55,7 @@ def vis_grid(images, grid_shape=None, name=None):
     plt.show()
 
 
-def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
+def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5, name=None):
     x = batch["input"][:num_images]
     recon_x, *_ = trained_model(x, z_rng=None, deterministic=True)
     img = nnx.sigmoid(recon_x)
@@ -69,9 +69,13 @@ def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
         for ax in axes[i]:
             ax.axis('off')
     plt.tight_layout()
+    
+    if name is not None:
+        plt.savefig(output_path + "/" + name + ".png")
+
     plt.show()
 
-def visualize_latent_space(trained_model, batch):
+def visualize_latent_space(trained_model, batch, name=None):
     '''
     Create a violin plot for each dimension in the latent space to visualize the distribution of latent variables. They are stacked vertically
     '''
@@ -93,6 +97,10 @@ def visualize_latent_space(trained_model, batch):
         orient="h", linewidth=0
     )
     plt.tight_layout()
+
+    if name is not None:
+        plt.savefig(output_path + "/" + name + ".png")
+
     plt.show()
 
 def bce_error(trained_model, all_possible_images):
@@ -112,7 +120,7 @@ def bce_error(trained_model, all_possible_images):
 
     return jnp.array(errors)
 
-def plot_training_history(history):
+def plot_training_history(history, name):
     '''
     Plot the train and val loss over epochs.
     Will make three plots one for regular loss, and one each for the loss_recon and loss_reg components.    Will make three plots one for regular loss, and one each for the loss_recon and loss_reg components.
@@ -143,6 +151,10 @@ def plot_training_history(history):
     plt.legend()
     plt.grid(True, which="both", ls="--")
     plt.tight_layout()
+
+    if name is not None:
+        plt.savefig(output_path + "/" + name + ".png")
+
     plt.show()
 
 
@@ -260,7 +272,7 @@ def calculate_distance(
     
     return dists
 
-def visualize_neighbors(trained_model, num_images, training_data, show_histograms=False, k=5, max_dist=7, distance='euclidean', rng_key=None):
+def visualize_neighbors(trained_model, num_images, training_data, show_histograms=False, k=5, max_dist=7, distance='euclidean', rng_key=None, name=None):
     '''
     Helper function to understand what euclidean distance means visually.
 
@@ -346,6 +358,12 @@ def visualize_neighbors(trained_model, num_images, training_data, show_histogram
     fig_neighbors.tight_layout()
     if show_histograms:
         fig_hist.tight_layout()
+        
+    if name is not None:
+        fig_neighbors.savefig(output_path + "/" + name + "-neighbors.png")
+        if show_histograms:
+            fig_hist.savefig(output_path + "/" + name + "-histograms.png")
+        
     plt.show()
 
 

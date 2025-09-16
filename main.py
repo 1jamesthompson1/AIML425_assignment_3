@@ -111,7 +111,7 @@ vae_trained_model, vae_history = train.do_complete_experiment(
     dropout=0.1, 
 )
 
-inspect.plot_training_history(vae_history)
+inspect.plot_training_history(vae_history, 'vae-training-history')
 inspect.final_performance_information(vae_trained_model, all_possible_images, key)
 # %% [markdown]
 # ## Understand the performance of the model
@@ -119,14 +119,14 @@ inspect.final_performance_information(vae_trained_model, all_possible_images, ke
 # %% Understand latent space distribution
 
 reload(inspect)
-inspect.visualize_latent_space(vae_trained_model, next(train_batches(key=key, minibatch_size=1000)))
+inspect.visualize_latent_space(vae_trained_model, next(train_batches(key=key, minibatch_size=1000)), name='vae-latent-space')
 
 # %% Inspecting the output
 reload(inspect)
 
 
 batch = next(train_batches(key=key, minibatch_size=10))
-inspect.visualize_reconstruction(vae_trained_model, batch, rng_key=key, num_images=10)
+inspect.visualize_reconstruction(vae_trained_model, batch, rng_key=key, num_images=10, name='vae-reconstruction')
 
 
 # %% [markdown]
@@ -141,7 +141,7 @@ inspect.vis_grid(generated_imgs, name='vae-generated')
 # %%
 reload(inspect)
 # This is simply to help intuitively select the threshold for what counts as an attempt
-inspect.visualize_neighbors(vae_trained_model, 15, all_possible_images, k=8, max_dist=50, rng_key=key, distance='euclidean')
+inspect.visualize_neighbors(vae_trained_model, 15, all_possible_images, k=8, max_dist=50, rng_key=key, distance='euclidean', name='vae')
 
 
 ################################################################################
@@ -182,7 +182,7 @@ ae_trained_model, ae_history = train.do_complete_experiment(
     dropout=0.1,
 )
 
-inspect.plot_training_history(ae_history)
+inspect.plot_training_history(ae_history, name='ae-training-history')
 inspect.final_performance_information(ae_trained_model, all_possible_images, key)
 
 # %% [markdown]
@@ -191,7 +191,7 @@ inspect.final_performance_information(ae_trained_model, all_possible_images, key
 # %% Visualize latent space
 
 reload(inspect)
-inspect.visualize_latent_space(ae_trained_model, next(train_batches(key=key, minibatch_size=1000)))
+inspect.visualize_latent_space(ae_trained_model, next(train_batches(key=key, minibatch_size=1000)), name='ae-latent-space')
 
 
 # %% Inspecting the output
@@ -199,7 +199,7 @@ reload(inspect)
 
 
 batch = next(train_batches(key=key, minibatch_size=10))
-inspect.visualize_reconstruction(ae_trained_model, batch, rng_key=key, num_images=10)
+inspect.visualize_reconstruction(ae_trained_model, batch, rng_key=key, num_images=10, name='ae-reconstruction')
 
 
 # %% [markdown]
@@ -210,7 +210,7 @@ reload(inspect)
 generated_imgs = inspect.sample_and_generate(ae_trained_model, num_samples=9, rng_key=key)
 
 
-inspect.vis_grid(generated_imgs)
+inspect.vis_grid(generated_imgs, name='ae-generated')
 
 # %% Estimate information rate
 
@@ -258,7 +258,7 @@ inspect.latent_space_traversal_and_reconstruct(
 
 # # Comparing the two models
 
-# To compare these two models I will simply run the final performane information function and put that in a table. It hives a good understanding of reocnsutrction error and some understanding of generative performaance.
+# To compare these two models I will simply run the final performance information function and put that in a table. It gives a good understanding of reconstruction error and some understanding of generative performance.
 
 # %%
 reload(inspect)
