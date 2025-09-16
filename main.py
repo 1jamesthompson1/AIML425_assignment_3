@@ -6,8 +6,17 @@
 # 
 # Most of the interesting good stuff is in the `src/` directory this file just runs the experiments and call the implementations.
 
-# ## Global imports
-# %% Start up
+
+# ## Startup
+# %% 
+# Clone your repository (only needed once per session)
+!git clone https://github.com/1jamesthompson1/AIML425_assignment_3.git
+
+# Move into the repository folder
+%cd AIML425_assignment_3
+
+# %% 
+
 from jax import random
 from jax import numpy as jnp
 from importlib import reload
