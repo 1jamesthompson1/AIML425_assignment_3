@@ -1,6 +1,7 @@
 # This code will be to generate some graphs as well as performance test the model.
 import matplotlib.pyplot as plt
 from jax import random, numpy as jnp
+from flax import nnx
 import optax
 import pandas as pd
 import seaborn as sns
@@ -52,16 +53,14 @@ def vis_grid(images, grid_shape=None):
 
 def visualize_reconstruction(trained_model, batch, rng_key=None, num_images=5):
     x = batch["input"][:num_images]
-    if rng_key is None:
-        rng_key = random.PRNGKey(1)
-    recon_x, *_ = trained_model(x, rng_key)
-    # DO sigmoid activation to make it look better
-    recon_x = 1/(1 + jnp.exp(-recon_x))
+    recon_x, *_ = trained_model(x, z_rng=None, deterministic=True)
+    img = nnx.sigmoid(recon_x)
+
     fig, axes = plt.subplots(num_images, 2, figsize=(5, 2 * num_images))
     for i in range(num_images):
         axes[i, 0].imshow(x[i].reshape(28, 28), cmap='gray')
         axes[i, 0].set_title("Input")
-        axes[i, 1].imshow(recon_x[i].reshape(28, 28), cmap='gray')
+        axes[i, 1].imshow(img[i].reshape(28, 28), cmap='gray')
         axes[i, 1].set_title("Reconstruction")
         for ax in axes[i]:
             ax.axis('off')
@@ -618,7 +617,7 @@ def zero_out_latent_and_reconstruct(trained_model, input_images, name):
         ax_orig.axis('off')
         
         ax_recon = fig.add_subplot(gs[wide_row, 5:10])
-        ax_recon.imshow(recon_x[i].reshape(28, 28), cmap='gray')
+        ax_recon.imshow(nnx.sigmoid(recon_x[i]).reshape(28, 28), cmap='gray')
         ax_recon.set_title("Reconstruction")
         ax_recon.axis('off')
         
@@ -626,7 +625,7 @@ def zero_out_latent_and_reconstruct(trained_model, input_images, name):
         for j in range(latent_dim):
             ax_latent = fig.add_subplot(gs[narrow_row, j])
             z_modified = z[i].at[j].set(0.0)  # Zero out the j-th latent dimension
-            recon_modified = trained_model.decoder(z_modified[None, :], rngs=None, deterministic=True)[0]  # (1, 784)
+            recon_modified = trained_model.generate(z_modified[None, :])  # (1, 784)
             ax_latent.imshow(recon_modified.reshape(28, 28), cmap='gray')
             ax_latent.set_title(f"Latent {j+1} zeroed")
             ax_latent.axis('off')
@@ -679,7 +678,7 @@ def latent_space_traversal_and_reconstruct(trained_model, input_images, traversa
         ax_orig.axis('off')
         
         ax_recon = fig.add_subplot(gs[0, steps//2:steps])
-        ax_recon.imshow(recon_x[i].reshape(28, 28), cmap='gray')
+        ax_recon.imshow(nnx.sigmoid(recon_x[i]).reshape(28, 28), cmap='gray')
         ax_recon.set_title("Reconstruction")
         ax_recon.axis('off')
         
@@ -688,7 +687,7 @@ def latent_space_traversal_and_reconstruct(trained_model, input_images, traversa
             for k, val in enumerate(traversal_values):
                 ax_latent = fig.add_subplot(gs[j + 1, k])
                 z_modified = z[i].at[j].set(val)  # Set the j-th latent dimension to the traversal value
-                recon_modified = trained_model.decoder(z_modified[None, :], rngs=None, deterministic=True)[0]  # (1, 784)
+                recon_modified = trained_model.generate(z_modified[None, :])  # (1, 784)
                 ax_latent.imshow(recon_modified.reshape(28, 28), cmap='gray')
                 if k == 0:
                     ax_latent.set_ylabel(f"Latent dim {j+1}", fontsize=12)

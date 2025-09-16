@@ -14,9 +14,6 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.columns import Columns
 
-from src.model import VAE
-
-
 class TrainState(train_state.TrainState):
     counts: nnx.State
     graphdef: nnx.GraphDef
@@ -103,15 +100,18 @@ def ae_loss_fn(params, state, batch, rng, deterministic, regularization_weight=1
     model = nnx.merge(state.graphdef, params, state.counts)
     x_recon, z = model(x, rng, deterministic=deterministic)
 
-    reconstruction_error_val = reconstruction_error(x, x_recon)
+    reconstruction_error_val = reconstruction_error(x, nnx.sigmoid(x_recon))
 
     # Not using as just caused a two hump distribution
-    # var_penalty = jnp.mean((jnp.var(z, axis=0) - 1) ** 2)
-    mmd_penalty = compute_mmd(z, random.normal(rng, z.shape), mmd_sigma)
+    if mmd_sigma is None:
+        reg_penalty = jnp.mean(jnp.mean(z, axis=1)**2 + (jnp.var(z, axis=1) - 1)**2)
+    else:
+        reg_penalty = compute_mmd(z, random.normal(rng, z.shape), mmd_sigma)
+    reg_penalty = regularization_weight * reg_penalty
 
-    loss = reconstruction_error_val + regularization_weight * mmd_penalty
+    loss = reconstruction_error_val + reg_penalty
     counts = nnx.state(model, Count)
-    return loss, x_recon, counts, (reconstruction_error_val, regularization_weight * mmd_penalty)
+    return loss, x_recon, counts, (reconstruction_error_val, reg_penalty)
 
 
 def plot_progress(metrics_history):
@@ -316,6 +316,7 @@ def do_complete_experiment(
     train_table.add_row("Batch Size", str(minibatch_size))
     train_table.add_row("Epochs", str(num_epochs))
     train_table.add_row("Eval Every", str(eval_every))
+    train_table.add_row("Loss function", str(loss_fn))
 
     console.print(
         Panel(

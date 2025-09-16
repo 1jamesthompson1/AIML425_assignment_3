@@ -2,10 +2,11 @@
 # # AIML 425 - Assignment 3
 # ## Problem 2: Variational Auto Encoders and Auto Encoders
 
-# This notebook is provided for ease of use for marking. However it sohuld be noted that the development was conducted with the notebook as script percent format. The assignment repository can be found at [my gitea instance](https://gitea.james-server.duckdns.org/james/AIML425_assignment_3)
+# This notebook is provided for ease of use for marking. However it sohuld be noted that the development was conducted with the notebook as script percent format. The assignment repository can be found at [my gitea instance](https://gitea.james-server.duckdns.org/james/AIML425_assignment_3)  
+# 
+# Most of the interesting good stuff is in the `src/` directory this file just runs the experiments and call the implementations.
 
 # ## Global imports
-# Most of the interesting good stuff is in the src/ directory this file just runs the experiments and call the implementations.
 # %% Start up
 from jax import random
 from jax import numpy as jnp
@@ -14,6 +15,7 @@ from functools import partial
 
 from src import model, train, data, inspect
 
+# This is the main key used for all random operations.
 key = random.key(42)
 
 reload(model)
@@ -154,20 +156,21 @@ ae_trained_model, ae_history = train.do_complete_experiment(
     valid_batches,
     model_class=model.AutoEncoder,
     model_kwargs={
-        "latent_noise_scale": 0.2
+        "latent_noise_scale": 0.1
     },
     loss_fn=partial(
         train.ae_loss_fn,
-        regularization_weight=1,
+        regularization_weight=0.1,
+        mmd_sigma=(0.5, 1, 3, 5) # Use basic mean and variance control
     ),
     learning_rate=0.001,
-    minibatch_size=512,
+    minibatch_size=64,
     latent_dim=10,
-    encoder_arch=[2000, 2000, 2000],
-    decoder_arch=[2000, 2000, 2000],
-    num_epochs=1000,
+    encoder_arch=[1000, 1000, 500],
+    decoder_arch=[500, 1000, 1000],
+    num_epochs=500,
     eval_every=10,
-    dropout=0.2,
+    dropout=0.1,
 )
 
 inspect.plot_training_history(ae_history)
